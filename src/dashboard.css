@@ -1,0 +1,935 @@
+/* Desktop-Kommandozentrale ab 1180px.
+   Optik unverändert übernommen – aber je Selektor nur noch eine Regel.
+   Vorher setzten vier gestapelte @media(min-width:1180px)-Schichten für
+   .week-strip 13 und für .metric-cluster 14 Mal eine font-size. */
+
+.desktop-shell {
+  padding: 18px 18px 18px 116px;
+  min-height: 780px;
+  background: var(--shell);
+  color: #183441;
+  font-size: 16px;
+}
+
+/* ── Schiene ──────────────────────────────────────────────────────────────── */
+
+.app-rail {
+  position: fixed;
+  z-index: 900;
+  left: 16px; top: 14px; bottom: 14px;
+  width: 82px;
+  padding: 19px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: var(--r-xl);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 12px 45px rgba(45, 75, 82, .08);
+}
+.rail-logo {
+  width: 52px; height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #ccecf4, #eef8f5);
+  font: 500 32px var(--serif);
+  font-style: italic;
+  line-height: 1;
+}
+.rail-logo i { font-style: normal; color: var(--accent) }
+
+.app-rail nav {
+  margin-top: 35px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.app-rail nav button {
+  position: relative;
+  width: 52px; height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  color: var(--ink-3);
+  transition: background .2s, color .2s;
+}
+.app-rail nav button svg { width: 25px; height: 25px }
+.app-rail nav button:hover,
+.app-rail nav button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* Beschriftung erscheint bei Hover und Fokus – die Schiene zeigt sonst nur Symbole. */
+.rail-tip {
+  position: absolute;
+  left: calc(100% + 12px);
+  padding: 7px 11px;
+  border-radius: var(--r-xs);
+  background: var(--ink);
+  color: var(--on-dark);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity .16s, transform .16s;
+  pointer-events: none;
+}
+.app-rail nav button:hover .rail-tip,
+.app-rail nav button:focus-visible .rail-tip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Arbeitsfläche und Kopfzeile ──────────────────────────────────────────── */
+
+.app-workspace {
+  min-width: 0;
+  height: calc(100svh - 36px);
+  min-height: 744px;
+  display: grid;
+  grid-template-rows: 78px minmax(0, 1fr);
+  gap: 12px;
+}
+.app-topbar {
+  display: grid;
+  grid-template-columns: auto minmax(240px, .8fr) 1fr;
+  align-items: center;
+  gap: 22px;
+}
+.dashboard-brand {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -.045em;
+  line-height: 1;
+  color: #183441;
+}
+.dashboard-brand i { font-style: normal; color: var(--accent) }
+.dashboard-brand small {
+  display: block;
+  margin-top: 7px;
+  font: var(--mono-strong) 10px var(--mono);
+  letter-spacing: .04em;
+  color: var(--ink-3);
+}
+.dashboard-search {
+  justify-self: start;
+  width: min(400px, 100%);
+  height: 54px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, .92);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink-3);
+}
+.dashboard-search svg { width: 22px; height: 22px; color: var(--accent) }
+.dashboard-search span { font-size: 15px; color: var(--ink-2) }
+.dashboard-search kbd {
+  margin-left: auto;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  font: var(--mono-strong) 11px var(--mono);
+  color: var(--ink-3);
+}
+.dashboard-date {
+  justify-self: end;
+  text-align: right;
+}
+.dashboard-date b { display: block; font-size: 23px; letter-spacing: -.02em }
+.dashboard-date span {
+  display: block;
+  margin-top: 6px;
+  font: var(--mono-strong) 12px var(--mono);
+  color: var(--ink-3);
+}
+
+/* ── Kartenraster ─────────────────────────────────────────────────────────── */
+
+.dashboard-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: minmax(230px, 1.2fr) minmax(175px, .85fr) minmax(205px, 1fr);
+  gap: clamp(14px, .7vw, 22px);
+}
+.dash-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, .92);
+  border-radius: clamp(27px, 1.35vw, 38px);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Szene */
+.scene-card {
+  grid-column: 1 / 6;
+  grid-row: 1;
+  position: relative;
+  color: var(--ink);
+}
+.scene-sky { position: absolute; inset: 0; width: 100%; height: 100% }
+/* Aufhellung links, damit Ort, Wetterlage und Temperatur lesbar bleiben. */
+.scene-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(232, 248, 252, .58), rgba(232, 248, 252, .12) 46%, transparent 64%);
+}
+.scene-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(17, 55, 67, .12));
+}
+.scene-location {
+  position: absolute;
+  z-index: 2;
+  top: 18px; left: 18px;
+  height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, .72);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, .8);
+  backdrop-filter: blur(12px);
+  font-size: 14px;
+  font-weight: 700;
+  color: #254955;
+}
+.scene-location svg { width: 18px; height: 18px }
+.scene-greeting {
+  position: absolute;
+  z-index: 3;
+  right: 24px; top: 24px;
+  text-align: right;
+  text-shadow: 0 2px 20px rgba(255, 255, 255, .7);
+}
+.scene-greeting > span {
+  font: var(--mono-strong) 11px var(--mono);
+  letter-spacing: .14em;
+  color: var(--ink);
+}
+.scene-greeting.is-night > span {
+  color: #edf8fc;
+  text-shadow:
+    0 1px 2px rgba(4, 20, 30, .9),
+    0 0 16px rgba(193, 228, 241, .38);
+}
+.scene-greeting h1 {
+  margin: 10px 0;
+  font-size: clamp(40px, 3vw, 70px);
+  line-height: .86;
+  letter-spacing: -.05em;
+}
+.scene-greeting h1 em {
+  font-family: var(--serif);
+  font-weight: 500;
+  color: var(--on-dark);
+  /* Übersteuert den weißen Schein des Elternelements: hinter weißer Schrift
+     hilft er nicht, ein dunkler Schatten schon. */
+  text-shadow: 0 2px 16px rgba(16, 54, 66, .55);
+}
+.scene-copy {
+  position: absolute;
+  z-index: 2;
+  left: 27px; bottom: 22px;
+}
+.scene-copy > div {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, .55vw, 15px);
+  font-size: clamp(17px, .95vw, 21px);
+  font-weight: 700;
+}
+.scene-copy > div svg {
+  width: clamp(40px, 2.9vw, 58px);
+  height: clamp(40px, 2.9vw, 58px);
+  color: var(--sun-icon);
+}
+.scene-copy > b {
+  display: block;
+  margin: 7px 0;
+  font: 400 clamp(76px, 5.8vw, 112px) / .95 var(--mono);
+  letter-spacing: -.06em;
+}
+.scene-copy > b sup { font-size: .42em; margin-left: 3px }
+.scene-copy p { font-size: clamp(14px, .75vw, 17px); font-weight: 600; color: #45636e }
+
+/* Kartenköpfe */
+.dash-card-head {
+  height: 61px;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+}
+.dash-card-head span {
+  font: var(--mono-strong) clamp(11px, .68vw, 15px) var(--mono);
+  letter-spacing: .13em;
+  color: var(--ink-3);
+}
+.dash-card-head h2 {
+  margin-top: 7px;
+  font-size: clamp(22px, 1.45vw, 32px);
+  letter-spacing: -.02em;
+}
+.dash-card-head > button {
+  padding: clamp(10px, .7vw, 15px) clamp(14px, .9vw, 20px);
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, .3vw, 8px);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: clamp(12px, .72vw, 16px);
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.dash-card-head > button svg { width: clamp(16px, 1vw, 22px); height: clamp(16px, 1vw, 22px) }
+.dash-card-head > svg { width: clamp(25px, 1.6vw, 36px); height: clamp(25px, 1.6vw, 36px); color: var(--accent) }
+
+/* Wochenstreifen – jetzt Schalter auf die Tagesansicht */
+.week-card {
+  grid-column: 6 / 13;
+  grid-row: 1;
+  padding: clamp(25px, 1.4vw, 36px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 1.1vw, 28px);
+}
+.week-card .dash-card-head {
+  height: auto;
+  flex-shrink: 0;
+}
+.week-card .dash-card-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.week-card .dash-card-head h2 {
+  margin-top: 0;
+  line-height: 1.1;
+}
+.week-strip {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: clamp(8px, .55vw, 14px);
+}
+.week-strip button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  transition: background .18s, border-color .18s, transform .18s;
+}
+.week-strip button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  transform: translateY(-2px);
+}
+.week-strip button.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(47, 127, 156, .22);
+}
+.week-strip span { font-size: clamp(13px, .9vw, 18px); font-weight: 700 }
+.week-strip small { font: var(--mono-strong) clamp(11px, .68vw, 15px) var(--mono); color: var(--ink-3) }
+.week-strip svg {
+  width: clamp(37px, 3.1vw, 60px);
+  height: clamp(37px, 3.1vw, 60px);
+  margin: clamp(3px, .25vw, 6px) 0;
+  color: var(--sun-icon);
+}
+.week-strip b { font: 600 clamp(23px, 1.55vw, 36px) var(--mono) }
+.week-strip em { font: 400 clamp(13px, .85vw, 18px) var(--mono); font-style: normal; color: var(--ink-3) }
+.week-strip i {
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, .2vw, 5px);
+  font: 400 clamp(11px, .68vw, 15px) var(--mono);
+  font-style: normal;
+  color: var(--rain-ink);
+}
+.week-strip i svg { width: clamp(11px, .7vw, 15px); height: clamp(11px, .7vw, 15px); margin: 0; color: inherit }
+
+/* Messwertkacheln */
+.metric-cluster {
+  grid-column: 1 / 6;
+  grid-row: 2;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, .55vw, 16px);
+}
+.metric-cluster article {
+  position: relative;
+  min-height: 0;
+  padding: clamp(16px, 1vw, 24px) clamp(14px, .9vw, 20px) clamp(13px, .8vw, 19px);
+  display: grid;
+  grid-template-columns: clamp(32px, 2.1vw, 52px) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: clamp(8px, .55vw, 14px);
+  align-content: center;
+  border: 1px solid var(--surface);
+  border-radius: clamp(20px, 1.05vw, 30px);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: var(--shadow-xs);
+}
+.metric-cluster article > svg {
+  position: static;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  justify-self: start;
+  width: clamp(25px, 1.7vw, 38px); height: clamp(25px, 1.7vw, 38px);
+  color: var(--accent);
+}
+.metric-cluster span {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  align-self: center;
+  line-height: 1.15;
+  font: var(--mono-strong) clamp(10px, .68vw, 15px) var(--mono);
+  letter-spacing: .11em;
+  color: var(--ink-3);
+}
+.metric-cluster b { grid-column: 2; grid-row: 2; margin: clamp(8px, .55vw, 13px) 0 clamp(4px, .3vw, 7px); font: 600 clamp(25px, 1.65vw, 38px) var(--mono) }
+.metric-cluster b em { font-size: clamp(12px, .75vw, 17px); font-style: normal; color: var(--ink-3) }
+.metric-cluster small { grid-column: 2; grid-row: 3; font-size: clamp(11px, .68vw, 15px); line-height: 1.3; color: var(--ink-3) }
+
+/* Wind */
+.wind-card {
+  grid-column: 6 / 9;
+  grid-row: 2;
+  container-type: inline-size;
+  padding: clamp(18px, 1.25vw, 30px) clamp(20px, 1.45vw, 34px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(118px, 44cqw, 190px);
+  gap: clamp(14px, 4.5cqw, 24px) clamp(18px, 5cqw, 28px);
+  align-items: center;
+}
+.wind-copy {
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(14px, .8vw, 20px);
+}
+.wind-card .dash-card-head {
+  height: auto;
+  align-items: flex-start;
+}
+.wind-card .dash-card-head h2 {
+  margin-top: 6px;
+  font: 600 clamp(28px, 2.4vw, 46px) / 1 var(--mono);
+  letter-spacing: -.04em;
+}
+.wind-card .dash-card-head h2 em {
+  margin-left: 2px;
+  font: 500 clamp(13px, .8vw, 18px)/1 var(--mono);
+  font-style: normal;
+  color: var(--ink-3);
+  letter-spacing: 0;
+  vertical-align: 4px;
+}
+.wind-copy dl {
+  display: grid;
+  gap: clamp(10px, .65vw, 16px);
+}
+.wind-copy dl > div {
+  display: grid;
+  gap: clamp(3px, .2vw, 5px);
+}
+.wind-copy dt {
+  font: var(--mono-strong) clamp(10px, .65vw, 14px)/1 var(--mono);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.wind-copy dd {
+  font: 600 clamp(18px, 1.15vw, 26px)/1.1 var(--mono);
+  color: var(--ink);
+}
+.wind-copy dd em {
+  margin-left: 2px;
+  font: 400 clamp(12px, .72vw, 16px)/1 var(--mono);
+  font-style: normal;
+  color: var(--ink-3);
+}
+.wind-dial {
+  position: relative;
+  width: clamp(118px, 44cqw, 190px);
+  aspect-ratio: 1;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--surface) 0 36%, transparent 38%),
+    radial-gradient(circle at 50% 50%, rgba(47, 127, 156, .06), transparent 68%);
+}
+.wind-dial > span {
+  position: absolute;
+  font: var(--mono-strong) clamp(10px, .65vw, 14px) var(--mono);
+  color: var(--ink-3);
+}
+.wind-dial > span:nth-child(1) { top: 8px; left: 50%; transform: translateX(-50%) }
+.wind-dial > span:nth-child(2) { right: 9px; top: 50%; transform: translateY(-50%) }
+.wind-dial > span:nth-child(3) { bottom: 8px; left: 50%; transform: translateX(-50%) }
+.wind-dial > span:nth-child(4) { left: 9px; top: 50%; transform: translateY(-50%) }
+.wind-dial > i {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: #d9645a;
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 1;
+}
+.wind-dial > i::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  width: clamp(2px, .2cqw, 3px);
+  height: 34%;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+.wind-dial > i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: clamp(9px, 3cqw, 14px);
+  height: clamp(11px, 3.5cqw, 17px);
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 50% 72%, 0 100%);
+  transform: translateX(-50%);
+}
+.wind-dial > b {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font: 600 clamp(18px, 1.15vw, 26px)/1 var(--mono);
+  letter-spacing: -.02em;
+  z-index: 2;
+}
+.wind-dial > b small {
+  margin-top: clamp(4px, .25vw, 6px);
+  font-size: clamp(10px, .65vw, 14px);
+  color: var(--ink-3);
+}
+
+@container (min-width: 390px) {
+  .wind-copy dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(12px, 3cqw, 20px);
+  }
+}
+
+/* Radarvorschau */
+.radar-preview { grid-column: 9 / 13; grid-row: 2; position: relative }
+.mini-radar { position: relative; height: 100%; width: 100% }
+.mini-radar .leaflet-container { height: 100%; width: 100% }
+.mini-radar .leaflet-tile-pane { filter: saturate(.65) brightness(1.05) contrast(.85) }
+.mini-radar .leaflet-control-zoom {
+  /* Unter das Schild, nicht darunter versteckt. */
+  margin: 57px 0 0 13px !important;
+  border: 0 !important;
+  box-shadow: 0 6px 18px rgba(34, 64, 75, .16) !important;
+}
+.mini-radar .leaflet-control-zoom a {
+  width: 34px !important; height: 34px !important;
+  line-height: 34px !important;
+  border: 0 !important;
+  font-size: 22px !important;
+  color: var(--ink) !important;
+}
+.mini-radar-badge {
+  position: absolute;
+  z-index: 500;
+  left: 13px; top: 13px;
+  padding: 10px 13px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, .9);
+  font: var(--mono-strong) 11px var(--mono);
+  letter-spacing: .09em;
+  color: var(--ink);
+}
+.mini-radar-badge i {
+  display: inline-block;
+  width: 8px; height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--alert);
+}
+.mini-radar-open {
+  position: absolute;
+  z-index: 500;
+  right: 13px; bottom: 13px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, .92);
+  box-shadow: var(--shadow-xs);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+/* Diagrammkarten */
+.chart-card {
+  grid-row: 3;
+  padding: clamp(23px, 1.3vw, 32px) clamp(24px, 1.5vw, 38px) clamp(16px, 1vw, 24px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, .6vw, 14px);
+}
+.air-chart { grid-column: 1 / 5 }
+.rain-chart { grid-column: 5 / 9 }
+.uv-chart { grid-column: 9 / 13 }
+.chart-card .dash-card-head {
+  height: clamp(63px, 4.2vw, 88px);
+  flex: 0 0 auto;
+}
+.chart-note {
+  flex: 0 0 auto;
+  margin-top: 0;
+  font: 400 clamp(11px, .65vw, 15px) var(--mono);
+  color: var(--ink-3);
+}
+.air-chart .area-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+/* Luftqualität: Ringanzeige links, Stundenverlauf rechts, Partikel darunter.
+   --aqi-fill kommt aus dem JSX und ist auf 75 % (= 270°-Bogen) gedeckelt. */
+.aqi-instrument {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  column-gap: clamp(18px, 1.3vw, 30px);
+  row-gap: clamp(10px, .7vw, 16px);
+  padding-top: clamp(12px, .7vw, 18px);
+  border-top: 1px solid var(--line-soft);
+}
+.aqi-gauge {
+  position: relative;
+  align-self: center;
+  width: clamp(92px, 6.5vw, 130px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.aqi-gauge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 225deg,
+    var(--rain) 0 var(--aqi-fill),
+    var(--surface-3) var(--aqi-fill) 75%,
+    transparent 75%);
+  -webkit-mask: radial-gradient(closest-side,
+    transparent calc(100% - clamp(10px, .7vw, 14px)),
+    #000 calc(100% - clamp(10px, .7vw, 14px) + 1px));
+  mask: radial-gradient(closest-side,
+    transparent calc(100% - clamp(10px, .7vw, 14px)),
+    #000 calc(100% - clamp(10px, .7vw, 14px) + 1px));
+}
+.aqi-gauge span {
+  display: grid;
+  justify-items: center;
+  row-gap: 3px;
+  text-align: center;
+}
+.aqi-gauge b {
+  font-size: clamp(25px, 1.8vw, 34px);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+}
+.aqi-gauge small {
+  font: var(--mono-strong) clamp(9px, .55vw, 12px) var(--mono);
+  letter-spacing: .12em;
+  color: var(--ink-3);
+}
+.aqi-trend {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, .4vw, 10px);
+}
+.aqi-trend p {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: clamp(10px, .7vw, 16px);
+  margin: 0;
+}
+.aqi-trend p span {
+  font: var(--mono-strong) clamp(9px, .55vw, 12px) var(--mono);
+  letter-spacing: .11em;
+  color: var(--ink-3);
+}
+.aqi-trend p b {
+  font-size: clamp(12px, .8vw, 16px);
+  font-weight: 700;
+  color: var(--ink);
+}
+.aqi-trend .area-chart {
+  padding-top: 0;
+  border-top: 0;
+}
+.aqi-particles {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 1vw, 24px);
+  padding-top: clamp(10px, .6vw, 14px);
+  border-top: 1px solid var(--line-soft);
+}
+.aqi-particles div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: clamp(8px, .5vw, 12px);
+}
+.aqi-particles dt {
+  font: var(--mono-strong) clamp(10px, .6vw, 13px) var(--mono);
+  letter-spacing: .09em;
+  color: var(--ink-3);
+}
+.aqi-particles dd {
+  font-size: clamp(13px, .85vw, 17px);
+  font-weight: 700;
+  color: var(--ink);
+}
+.aqi-particles dd small {
+  font: 400 clamp(10px, .6vw, 13px) var(--mono);
+  color: var(--ink-3);
+}
+
+/* Regenchance: eine Säule je Stunde. Die leere Spur ist die Skala – voll
+   gefüllt sind 100 %, deshalb braucht es keine Hilfslinie und keine Achse. */
+.rain-instrument {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  padding-top: clamp(12px, .7vw, 18px);
+  border-top: 1px solid var(--line-soft);
+}
+.rain-bars {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: clamp(4px, .45vw, 12px);
+}
+.rain-bar {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  justify-items: center;
+  row-gap: clamp(5px, .35vw, 9px);
+}
+.rain-track {
+  position: relative;
+  width: 100%;
+  max-width: clamp(13px, 1.15vw, 22px);
+  height: 100%;
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.rain-track i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--level);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--curve), var(--rain));
+}
+.rain-bar b {
+  font: var(--mono-strong) clamp(10px, .65vw, 15px) var(--mono);
+  color: var(--rain-ink);
+}
+.rain-bar small {
+  font: var(--mono-strong) clamp(10px, .6vw, 13px) var(--mono);
+  color: var(--ink-3);
+}
+.rain-instrument.is-dry .rain-bar b { color: var(--ink-3) }
+.rain-instrument.is-dry .rain-track { opacity: .5 }
+.rain-dry {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, .7vw, 15px);
+  padding: clamp(10px, .6vw, 14px) clamp(15px, 1vw, 23px);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .84);
+  white-space: nowrap;
+}
+.rain-dry > svg {
+  width: clamp(24px, 1.7vw, 33px);
+  height: clamp(24px, 1.7vw, 33px);
+  color: var(--sun-icon);
+}
+.rain-dry span { display: grid }
+.rain-dry b {
+  font-size: clamp(13px, .85vw, 17px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.rain-dry small {
+  font: 400 clamp(10px, .62vw, 14px) var(--mono);
+  color: var(--ink-3);
+}
+/* UV-Index: acht Tagessäulen, die Wertblase reitet auf dem Füllstand. */
+.uv-instrument {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: clamp(10px, .7vw, 18px);
+  padding-top: clamp(12px, .7vw, 18px);
+  border-top: 1px solid var(--line-soft);
+}
+.uv-instrument > div {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) clamp(22px, 1.4vw, 32px);
+  justify-items: center;
+  row-gap: clamp(4px, .3vw, 8px);
+  /* Platz für die Wertblase, wenn der Füllstand oben anschlägt */
+  padding-top: clamp(14px, 1vw, 20px);
+}
+.uv-instrument i {
+  position: relative;
+  width: clamp(3px, .25vw, 5px);
+  height: 100%;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.uv-instrument i::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--uv-fill);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--sun-icon), #ecd9a4);
+}
+.uv-instrument i b {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: var(--uv-fill);
+  transform: translate(-50%, 50%);
+  width: clamp(26px, 1.8vw, 36px);
+  height: clamp(26px, 1.8vw, 36px);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-xs);
+  font: var(--mono-strong) clamp(11px, .7vw, 15px) var(--mono);
+  color: var(--ink-2);
+}
+.uv-instrument .is-current i b {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--on-dark);
+}
+.uv-instrument span {
+  align-self: end;
+  font: var(--mono-strong) clamp(10px, .65vw, 15px) var(--mono);
+  color: var(--ink-3);
+}
+.uv-instrument .is-current span { color: var(--ink) }
+
+.area-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) clamp(22px, 1.4vw, 32px);
+  padding: clamp(12px, .7vw, 18px) 0 0;
+  border-top: 1px solid var(--line-soft);
+}
+.area-chart svg { width: 100%; height: 100%; overflow: visible }
+.area-chart > div {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: clamp(4px, .45vw, 12px);
+}
+.area-chart span {
+  text-align: center;
+  font: var(--mono-strong) clamp(10px, .65vw, 15px) var(--mono);
+  color: var(--ink-3);
+}
+
+/* Engerer Desktop: nur Größen, keine neuen Regeln. */
+@media (max-width: 1450px) {
+  .dashboard-brand { font-size: 29px }
+  .dashboard-brand small { display: none }
+  .dashboard-date b { font-size: 20px }
+  .dashboard-date span { font-size: 11px }
+  .scene-greeting h1 { font-size: 42px }
+  .scene-greeting { right: 18px }
+  .metric-cluster article {
+    padding: 12px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    column-gap: 8px;
+  }
+  .metric-cluster article > svg { width: 25px; height: 25px }
+  .metric-cluster span { font-size: 10px }
+  .metric-cluster b { margin: 5px 0 2px; font-size: 22px }
+  .metric-cluster small { font-size: 10px }
+}
+
+/* Kleine Desktopfenster bekommen eine eigene vertikale Reserve. Die
+   Messwertgruppe bleibt zweizeilig lesbar und die Seite darf scrollen, statt
+   die Diagramme in die Karten darüber zu schieben. */
+@media (min-width: 1180px) and (max-height: 820px) {
+  .app-workspace {
+    height: auto;
+    min-height: 0;
+  }
+  .dashboard-layout {
+    grid-template-rows: 300px 236px 300px;
+  }
+}

@@ -1,0 +1,77 @@
+/* himmel° — Entwurfsmarken.
+   Vorher standen rund 40 einzeln gepflegte Blaugrau-Hexwerte im Code
+   (#54a9c6, #5ca6c1, #57a2b8, #4d9ebc, #50a6c2, #6bb8d5 …). */
+
+:root {
+  color-scheme: light;
+
+  /* Flächen */
+  --page: #edf2f1;
+  --page-alt: #f6f9f8;
+  --page-cool: #e5eeed;
+  --shell: #e8eeef;
+  --surface: #fff;
+  --surface-2: #f4f7f7;
+  --surface-3: #eaf1f1;
+  --line: #dbe4e4;
+  --line-soft: #e9eeee;
+
+  /* Text. Alle drei Stufen erreichen auf --surface und --surface-2
+     mindestens 4.5:1, damit auch die kleinen Mono-Labels lesbar sind. */
+  --ink: #173342;
+  --ink-2: #3c5a66;
+  --ink-3: #526c76;
+  --on-dark: #fff;
+  --on-dark-2: #dbeaeb;
+
+  /* Akzente */
+  --accent: #2f7f9c;
+  --accent-strong: #1f6a86;
+  --accent-soft: #dff1f7;
+  --accent-line: #73aeca;
+  /* --rain zeichnet Balken und Linien, --rain-ink beschriftet sie. Als Textfarbe
+     erreicht --rain nur 3.7:1 auf Weiß und fiel damit durch. */
+  --rain: #3d8fae;
+  --rain-ink: #27697f;
+  --curve: #4f9ec0;
+  --sun: #c8892a;
+  --sun-icon: #dda93e;
+  --alert: #d64550;
+
+  /* Dunkler Verlauf des Briefings. Der helle Endpunkt ist so gewählt, dass
+     weißer Text auch dort noch über 4.5:1 liegt. */
+  --briefing: linear-gradient(120deg, #143543, #205c69 55%, #2f6b7a);
+
+  /* Radien */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 27px;
+  --r-2xl: 32px;
+
+  /* Schatten */
+  --shadow-xs: 0 6px 18px rgba(45, 75, 82, .05);
+  --shadow-sm: 0 7px 25px rgba(55, 83, 88, .06);
+  --shadow-md: 0 12px 40px rgba(45, 75, 82, .09);
+  --shadow-lg: 0 22px 60px rgba(41, 78, 89, .16);
+
+  /* Schrift. DM Mono gibt es nur in 300/400/500 – höhere Angaben wurden
+     wegen font-synthesis:none stillschweigend auf 500 zurückgesetzt. */
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'DM Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --mono-strong: 500;
+
+  /* Abstände der Seitenränder */
+  --gutter: clamp(16px, 4vw, 74px);
+  --rail-gap: max(130px, 7vw);
+
+  /* Ein „Bildschirm“: das Maß, an dem sich alle Abschnitte ausrichten.
+     Unter 1180px liegt die Tab-Leiste über der Seite und zählt nicht dazu. */
+  --screen: 100svh;
+}
+
+@media (max-width: 1179px) {
+  :root { --screen: calc(100svh - 82px) }
+}

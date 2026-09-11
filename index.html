@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#edf2f1" />
+    <meta name="description" content="himmel° schaut für dich nach oben – Wettervorhersage mit Live-Regenradar, 24-Stunden-Tagesansicht und offenen Wetterdaten." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <link rel="preconnect" href="https://api.open-meteo.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
+
+    <!-- Schriften als <link> statt @import in der CSS: der Import blockierte das
+         Stylesheet, bis die Font-CSS geladen war. DM Mono gibt es nur bis 500. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500&display=swap"
+    />
+    <!-- Kein statisches preload für das Hero-Bild: es wird von Vite gehasht und
+         liegt je nach Zielordner woanders. Das CSS lädt es ohnehin sofort. -->
+
+    <title>himmel° — Schaut für dich nach oben.</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

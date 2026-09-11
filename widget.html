@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Eingebettete Kachel: Suchmaschinen sollen die Vollansicht finden, nicht sie. -->
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <link rel="preconnect" href="https://api.open-meteo.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Nur die zwei Schriften, die das Widget benutzt – Playfair kommt hier
+         nicht vor. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap"
+    />
+
+    <title>himmel° — Wetter im Überblick</title>
+  </head>
+  <body>
+    <div id="widget"></div>
+    <script type="module" src="/src/widget-main.jsx"></script>
+  </body>
+</html>

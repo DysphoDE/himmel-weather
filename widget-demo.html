@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>himmel° Widget — Einbettung testen</title>
+    <!--
+      Vorführseite für die Einbettung: zeigt dieselbe Kachel in drei Breiten und
+      wertet die Höhennachricht aus. Sie steht absichtlich nicht in den
+      Einstiegspunkten der vite.config – gebaut wird sie nicht, sie existiert nur
+      unter `npm run dev` als Prüfstand.
+    -->
+    <style>
+      body {
+        margin: 0;
+        padding: 32px clamp(16px, 4vw, 48px) 64px;
+        background: #fff;
+        color: #173342;
+        font: 400 15px/1.5 system-ui, sans-serif;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px }
+      p.lead { margin: 0 0 28px; color: #526c76 }
+      section { margin-bottom: 32px }
+      h2 { margin: 0 0 8px; font: 500 12px/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: #526c76 }
+      /* So sieht es im Portal aus: Rahmen und Radius stellt die Seite, nicht das Widget. */
+      .frame { border: 1px solid #dbe4e4; border-radius: 16px; overflow: hidden }
+      iframe { display: block; width: 100%; height: 250px; border: 0 }
+      .w-360 { max-width: 360px }
+      .w-560 { max-width: 560px }
+    </style>
+  </head>
+  <body>
+    <h1>himmel° — Widget im Portal</h1>
+    <p class="lead">Drei Breiten, dieselbe Adresse. Die Höhe stellt sich über <code>postMessage</code> selbst ein.</p>
+
+    <section>
+      <h2>Schmale Spalte (360 px)</h2>
+      <div class="frame w-360"><iframe src="widget?ort=Marktoberdorf" title="Wetter in Marktoberdorf" loading="lazy"></iframe></div>
+    </section>
+
+    <section>
+      <h2>Halbe Breite (560 px)</h2>
+      <div class="frame w-560"><iframe src="widget?lat=47.78&lon=10.62&ort=Marktoberdorf" title="Wetter in Marktoberdorf" loading="lazy"></iframe></div>
+    </section>
+
+    <section>
+      <h2>Volle Breite</h2>
+      <div class="frame"><iframe src="widget?ort=Kaufbeuren" title="Wetter in Kaufbeuren" loading="lazy"></iframe></div>
+    </section>
+
+    <script>
+      // Höhe aus dem Widget übernehmen. Zugeordnet wird über event.source –
+      // so trifft die Nachricht das iframe, aus dem sie kommt.
+      window.addEventListener('message', event => {
+        if (event.data?.type !== 'himmel:height') return
+        for (const frame of document.querySelectorAll('iframe')) {
+          if (frame.contentWindow === event.source) frame.style.height = `${event.data.height}px`
+        }
+      })
+    </script>
+  </body>
+</html>

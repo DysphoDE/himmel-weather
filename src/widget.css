@@ -1,0 +1,261 @@
+/* himmel° — Widget-Modus.
+   Eigenes, kleines Stylesheet: Die Kachel hängt in einer fremden Seite, da soll
+   nichts aus dashboard.css/mobile.css mitgeladen werden. Weiß statt --page,
+   weil das Portal selbst weiß ist und eine getönte Fläche im iframe wie ein
+   Fehler aussieht.
+
+   Gemessen wird die Breite der Kachel, nicht die des Fensters (@container):
+   Ein iframe ist zwar meist so breit wie sein Inhalt, aber so trägt das Layout
+   auch, wenn das Widget direkt in eine Spalte eingebaut wird. */
+
+* { box-sizing: border-box }
+
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p, dl, dd, dt { margin: 0 }
+a { color: inherit; text-decoration: none }
+svg { flex: none }
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Rahmen ────────────────────────────────────────────────────────────────── */
+
+.widget {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  /* Kein Rand, kein Schatten: Das Portal setzt die Kachel selbst in seinen
+     Rahmen. Nur Innenabstand, damit der Text nicht am iframe klebt. */
+  padding: 13px 15px 15px;
+}
+
+.widget-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* font:inherit, weil die Überschrift sonst die 2em des Browsers mitbringt –
+   die Größen stehen an ihren Kindern. */
+.widget-place {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  font: inherit;
+}
+.widget-place svg {
+  width: 13px; height: 13px;
+  color: var(--accent);
+  transform: translateY(2px);
+}
+.widget-place b {
+  font: 600 13px/1.2 var(--font);
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-place small {
+  flex: none;
+  color: var(--ink-3);
+  font: var(--mono-strong) 10px/1.2 var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.widget-brand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-2);
+  font: 700 13px/1 var(--font);
+  letter-spacing: .01em;
+  transition: color 150ms;
+}
+.widget-brand i { color: var(--accent); font-style: normal }
+.widget-brand svg { width: 13px; height: 13px; stroke-width: 2.1 }
+.widget-brand:hover { color: var(--accent-strong) }
+
+.widget-state {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.widget-state.is-error { color: var(--alert) }
+
+/* ── Inhalt ────────────────────────────────────────────────────────────────── */
+
+.widget-body {
+  display: grid;
+  gap: 11px 18px;
+  grid-template-areas: 'now' 'hours' 'days';
+}
+
+.widget-now {
+  grid-area: now;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0 11px;
+}
+.widget-now > svg { color: var(--accent-strong) }
+
+.widget-temp {
+  display: flex;
+  align-items: flex-start;
+  color: var(--ink);
+  line-height: 1;
+}
+.widget-temp b { font: 700 40px/1 var(--font); letter-spacing: -.03em }
+.widget-temp sup { font: 500 18px/1 var(--font); margin-top: 3px }
+
+.widget-now-copy { min-width: 0; display: grid; gap: 2px }
+.widget-now-copy > b {
+  font: 600 14px/1.25 var(--font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-now-copy > small { color: var(--ink-3); font-size: 11.5px; line-height: 1.35 }
+
+/* Über den Elternteil ausgewählt, damit die Regel die Farbe von
+   `.widget-now-copy > small` übersteuert, ohne !important zu brauchen. */
+.widget-now-copy > .widget-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 11px;
+  color: var(--ink-2);
+}
+.widget-facts span { display: inline-flex; align-items: center; gap: 4px }
+.widget-facts svg { width: 12px; height: 12px; color: var(--rain-ink) }
+/* Der Sonnenuntergang ist die entbehrlichste der drei Angaben – er erscheint
+   erst, wenn die Zeile ihn ohne Umbruch trägt. Mit `.widget-facts` davor, weil
+   die Regel eine Zeile höher sonst spezifischer ist als diese. */
+.widget-facts .widget-fact-wide { display: none }
+
+/* Stunden und Tage teilen sich das Raster einer Zeile mit gleichen Spalten,
+   damit beide Streifen dieselbe Rhythmik haben. */
+.widget-hours,
+.widget-days {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.widget-hours > div {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 3px 2px;
+  border-radius: var(--r-xs);
+}
+
+/* Die Tage stehen in einer Zeile statt übereinander: Sie tragen nur vier kurze
+   Angaben, gestapelt kosteten sie 40 px Höhe – im Portal das Teuerste, was es
+   gibt. Erst in der breiten Form (unten) werden sie wieder zu Spalten. */
+.widget-days > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px;
+}
+.widget-hours > div > span,
+.widget-days > div > span {
+  color: var(--ink-3);
+  font: var(--mono-strong) 10px/1 var(--mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.widget-hours svg,
+.widget-days svg { color: var(--ink-2) }
+.widget-hours > div > b,
+.widget-days > div > b { font: 600 13px/1 var(--font) }
+
+.widget-hours > div > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--rain-ink);
+  font: 500 10.5px/1 var(--font);
+}
+.widget-hours > div > small svg { width: 10px; height: 10px; color: inherit }
+.widget-days > div > small { color: var(--ink-3); font: 500 11px/1 var(--font) }
+
+/* Die aktuelle Stunde bekommt die einzige Fläche im Widget – ohne sie muss man
+   die Beschriftung lesen, um sich in der Reihe zu finden. */
+.widget-hours > div.is-now {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.widget-hours > div.is-now > span { color: var(--accent-strong) }
+.widget-hours > div.is-now svg { color: var(--accent-strong) }
+
+/* ── Breitere Einbettungen ─────────────────────────────────────────────────── */
+
+/* Ab hier steht der Jetzt-Block neben den Streifen; die Trennlinie wandert
+   von oben nach links. */
+@container (min-width: 520px) {
+  .widget-body {
+    grid-template-areas: 'now hours' 'now days';
+    grid-template-columns: minmax(170px, .95fr) 1.05fr;
+    align-items: center;
+  }
+  .widget-hours { padding: 0 0 9px 18px; border: 0 }
+  .widget-days { padding: 9px 0 0 18px; border-top: 1px solid var(--line-soft) }
+  .widget-hours, .widget-days { border-left: 1px solid var(--line-soft) }
+}
+
+@container (min-width: 640px) {
+  .widget-facts .widget-fact-wide { display: inline-flex }
+}
+
+/* Drei Spalten: Damit bleibt die Kachel unter 130 px hoch – für eine Portal-
+   Spalte über der Falz die eigentliche Zielform. */
+@container (min-width: 780px) {
+  .widget-body {
+    grid-template-areas: 'now hours days';
+    grid-template-columns: minmax(190px, .9fr) 1.3fr .85fr;
+  }
+  .widget-hours { padding: 0 0 0 18px }
+  .widget-days { padding: 0 0 0 18px; border-top: 0 }
+  .widget-days > div { display: grid; justify-items: center; gap: 3px; padding: 3px 2px }
+  .widget-temp b { font-size: 44px }
+}
+
+/* Sehr schmale Einbettungen: Das Symbol vor der Temperatur ist dort das erste,
+   was Platz kostet, ohne Information zu tragen – die Wortmarke steht daneben. */
+@container (max-width: 300px) {
+  .widget-now { grid-template-columns: auto 1fr }
+  .widget-now > svg { display: none }
+  .widget-temp b { font-size: 34px }
+  .widget-hours > div:nth-child(n+5) { display: none }
+}
