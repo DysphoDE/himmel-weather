@@ -23,15 +23,39 @@ export const WMO = {
 
 export const weatherLabel = code => WMO[code]?.[0] || 'Wechselhaft'
 export const weatherKind = code => WMO[code]?.[1] || 'cloud'
-export const cardinal = deg => ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'][Math.round((deg || 0) / 45) % 8]
-export const fmtTime = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-export const fmtDay = iso => new Date(iso).toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '')
-export const fmtDayLong = iso => new Date(iso).toLocaleDateString('de-DE', { weekday: 'long' })
-export const fmtDate = iso => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })
-export const fmtHour = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit' })
+export const cardinal = deg => Number.isFinite(deg) ? ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8] : '–'
+export const measurement = value => Number.isFinite(value) ? Math.round(value) : '–'
+export const kilometers = value => Number.isFinite(value) ? measurement(value / 1000) : '–'
+/* Open-Meteo liefert mit timezone=auto Ortszeiten ohne Offset. Diese Werte
+   sind Kalender-/Uhrzeitangaben am Wetterort, keine Browserzeit. UTC dient hier
+   nur als neutrale Rechenachse, auch an Zeitumstellungstagen im Browser. */
+export const weatherDate = value => new Date(typeof value === 'string' && /^\d{4}-\d\d-\d\d(?:T\d\d:\d\d(?::\d\d)?)?$/.test(value)
+  ? `${value.length === 10 ? `${value}T00:00` : value}Z` : value)
+export const formatWeatherDate = (value, options) => weatherDate(value).toLocaleDateString('de-DE', { ...options, timeZone: 'UTC' })
+export const fmtTime = iso => weatherDate(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+export const fmtDay = iso => formatWeatherDate(iso, { weekday: 'short' }).replace('.', '')
+export const fmtDayLong = iso => formatWeatherDate(iso, { weekday: 'long' })
+export const fmtDate = iso => formatWeatherDate(iso, { day: '2-digit', month: 'long' })
+export const fmtHour = iso => weatherDate(iso).toLocaleTimeString('de-DE', { hour: '2-digit', timeZone: 'UTC' })
+export const hourOf = iso => weatherDate(iso).getUTCHours()
+export const addWeatherHour = iso => new Date(weatherDate(iso).getTime() + 3600000)
+
+export const localTime = (timezone, now = Date.now()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now)
+  const get = type => parts.find(part => part.type === type).value
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
+}
+export const localDate = (timezone, now) => localTime(timezone, now).slice(0, 10)
+
+/* Gleiche Ortszeitbasis wie current.time; kein Vergleich mit der Browseruhr.
+   Nach dem Ende der Reihe gilt der letzte Wert statt eines Sprungs auf 00 Uhr. */
+export const currentHourIndex = (times, currentTime) => {
+  const next = times.findIndex(time => time > currentTime)
+  return next < 0 ? Math.max(0, times.length - 1) : Math.max(0, next - 1)
+}
 /* Nur die Stundenzahl: Das deutsche "19 Uhr" ist in einer Achse mit acht
    Spalten breiter als die Spalte und stößt an den Nachbarn. */
-export const hourNumber = iso => String(new Date(iso).getHours()).padStart(2, '0')
+export const hourNumber = iso => String(hourOf(iso)).padStart(2, '0')
 
 /**
  * Niederschlag in Litern pro Quadratmeter. Das ist dieselbe Zahl, die
@@ -41,7 +65,8 @@ export const hourNumber = iso => String(new Date(iso).getHours()).padStart(2, '0
  */
 export const PRECIP_UNIT = 'L/m²'
 export const precipValue = mm => {
-  const value = Number(mm) || 0
+  if (!Number.isFinite(mm)) return '–'
+  const value = mm
   // Unter zehn Litern trägt die Nachkommastelle noch Information, darüber nicht.
   return value.toLocaleString('de-DE', { maximumFractionDigits: value < 10 ? 1 : 0 })
 }
@@ -52,7 +77,7 @@ export const fmtPrecip = mm => `${precipValue(mm)} ${PRECIP_UNIT}`
    explanations.js): Wortmarke im Wert und Erklärung dahinter können so nicht
    auseinanderlaufen. `range` beschreibt die Spanne für Menschen, `up to` ist
    die Obergrenze für die Zuordnung. */
-const tierOf = (scale, value) => (scale.find(step => value < step.upTo) ?? scale.at(-1)).label
+const tierOf = (scale, value) => Number.isFinite(value) ? (scale.find(step => value < step.upTo) ?? scale.at(-1)).label : 'Keine Daten'
 
 export const UV_SCALE = [
   { upTo: 3, label: 'Niedrig', range: '0–2', hint: 'Kein Schutz nötig' },
@@ -62,7 +87,7 @@ export const UV_SCALE = [
   { upTo: Infinity, label: 'Extrem', range: 'ab 11', hint: 'In Deutschland praktisch nie' }
 ]
 export const uvTier = v => tierOf(UV_SCALE, v)
-export const uvAdvice = v => v < 3 ? 'Kein Schutz nötig' : v < 6 ? 'Schutz empfohlen' : v < 8 ? 'Schutz nötig' : 'Mittags Schatten suchen'
+export const uvAdvice = v => !Number.isFinite(v) ? 'Keine UV-Daten' : v < 3 ? 'Kein Schutz nötig' : v < 6 ? 'Schutz empfohlen' : v < 8 ? 'Schutz nötig' : 'Mittags Schatten suchen'
 
 export const AQI_SCALE = [
   { upTo: 20, label: 'Sehr gut', range: '0–19' },
@@ -80,9 +105,17 @@ export const POLLEN_SCALE = [
   { upTo: 150, label: 'Hoch', range: '50–149 Pollen/m³', hint: 'Zur Hauptblüte üblich' },
   { upTo: Infinity, label: 'Sehr hoch', range: 'ab 150 Pollen/m³' }
 ]
-export const pollenTier = v => tierOf(POLLEN_SCALE, v)
+export const pollenTier = v => Number.isFinite(v) ? tierOf(POLLEN_SCALE, v) : 'Keine Daten'
 /* Eigene Form für den Satzbau: "Gering Belastung" wäre falsch. */
-export const pollenPhrase = v => `${{ Gering: 'Geringe', Mäßig: 'Mäßige', Hoch: 'Hohe', 'Sehr hoch': 'Sehr hohe' }[pollenTier(v)]} Belastung`
+export const pollenPhrase = v => Number.isFinite(v)
+  ? `${{ Gering: 'Geringe', Mäßig: 'Mäßige', Hoch: 'Hohe', 'Sehr hoch': 'Sehr hohe' }[pollenTier(v)]} Belastung`
+  : 'Keine Pollendaten'
+export const pollenPeak = air => {
+  const values = [air?.alder_pollen, air?.birch_pollen, air?.grass_pollen]
+  // Auch bei teilweise fehlender Abdeckung ist das Gesamtmaximum unbekannt.
+  return values.every(Number.isFinite) ? Math.max(...values) : null
+}
+export const pollenValue = value => Number.isFinite(value) ? Math.round(value) : '–'
 
 /* Absteigend, weil die Wortmarken an Untergrenzen hängen. */
 export const VISIBILITY_SCALE = [
@@ -91,7 +124,7 @@ export const VISIBILITY_SCALE = [
   { above: 4000, label: 'Mäßige Sicht', range: '4–10 km' },
   { above: -Infinity, label: 'Eingeschränkte Sicht', range: 'unter 4 km', hint: 'Unter 1 km spricht man von Nebel' }
 ]
-export const visibilityTier = m => VISIBILITY_SCALE.find(step => m > step.above).label
+export const visibilityTier = m => Number.isFinite(m) ? VISIBILITY_SCALE.find(step => m > step.above).label : 'Keine Daten'
 
 export const HUMIDITY_SCALE = [
   { upTo: 35, label: 'Trocken', range: 'unter 35 %', hint: 'Haut und Schleimhäute trocknen aus' },
@@ -108,7 +141,7 @@ export const PRESSURE_SCALE = [
 ]
 /* Auf die angezeigte, gerundete Zahl beziehen – sonst steht "1021 hPa" neben
    der Wortmarke des Normalbereichs. */
-export const pressureTier = v => tierOf(PRESSURE_SCALE, Math.round(v ?? 0))
+export const pressureTier = v => tierOf(PRESSURE_SCALE, Number.isFinite(v) ? Math.round(v) : null)
 
 /* Nur Beschriftung, keine Wortmarke im Wert: Wind steht überall als Zahl. */
 export const WIND_SCALE = [
@@ -157,9 +190,40 @@ export const outdoorScore = ({ rainMax, gusts, uv, high }) => {
   )))
 }
 
-export const getRisk = data => {
+/** Gemeinsame Fensterbewertung für Desktop und Mobil. Alle Kandidaten haben
+ * dieselbe Länge (bis zu drei Stunden); Lücken und fehlende Werte bewerten wir
+ * nicht als gutes Wetter. Der Wert ist das Mittel der stündlichen Eignung. */
+export const bestWeatherWindow = (hours, currentTime) => {
+  const daytime = hours.filter(hour => hourOf(hour.time) >= 7 && hourOf(hour.time) <= 20)
+  const remaining = daytime.filter(hour => hour.time >= currentTime.slice(0, 13) + ':00')
+  const candidates = remaining.length ? remaining : daytime
+  const length = Math.min(3, candidates.length)
+  const windows = candidates.map((_, index) => candidates.slice(index, index + length))
+    .filter(block => length && block.length === length && block.every((hour, index) =>
+      [hour.rainChance, hour.gusts, hour.uv, hour.temperature].every(Number.isFinite) &&
+      (!index || weatherDate(hour.time) - weatherDate(block[index - 1].time) === 3600000)))
+    .map(block => ({ block, score: Math.round(block.reduce((sum, hour) => sum + outdoorScore({
+      rainMax: hour.rainChance, gusts: hour.gusts, uv: hour.uv, high: hour.temperature
+    }), 0) / block.length) }))
+  const best = windows.sort((a, b) => b.score - a.score)[0]
+  if (!best) return { label: 'Kein verlässliches Zeitfenster', score: null, rain: null, gusts: null, past: !remaining.length,
+    advice: 'Keine Bewertung', detail: 'Für eine verlässliche Empfehlung fehlen Stundenwerte.' }
+  const rain = Math.max(...best.block.map(hour => hour.rainChance))
+  const gusts = Math.max(...best.block.map(hour => hour.gusts))
+  const low = Math.min(...best.block.map(hour => hour.temperature))
+  const high = Math.max(...best.block.map(hour => hour.temperature))
+  const uv = Math.max(...best.block.map(hour => hour.uv))
+  const reasons = [rain < 30 ? 'Trocken' : rain < 60 ? 'Schauer möglich' : 'Hohes Regenrisiko',
+    gusts <= 25 ? 'wenig Wind' : gusts < 50 ? 'spürbarer Wind' : 'kräftige Böen',
+    high > 28 ? 'heiße Temperaturen' : low < 8 ? 'teils kühl' : 'angenehme Temperatur']
+  if (uv >= 6) reasons.push('hohe UV-Belastung')
+  return { label: `${fmtTime(best.block[0].time)}–${fmtTime(addWeatherHour(best.block.at(-1).time))}`,
+    score: best.score, rain, gusts, past: !remaining.length, advice: tierOf(SCORE_SCALE, best.score), detail: `${reasons.join(', ')}.` }
+}
+
+export const getRisk = (data, currentTime = data?.current?.time) => {
   const c = data?.current || {}
-  const i = Math.max(0, data?.hourly?.time?.findIndex(t => new Date(t) >= new Date()) || 0)
+  const i = currentHourIndex(data?.hourly?.time || [], currentTime)
   const precip = Math.max(...(data?.hourly?.precipitation_probability?.slice(i, i + 8) || [0]))
   if (c.weather_code >= 95 || c.wind_gusts_10m >= 75) return { level: 'hoch', text: 'Unwetterpotenzial', detail: 'Gewitter oder schwere Böen möglich', color: '#d64550', steps: 4 }
   if (c.wind_gusts_10m >= 50 || precip >= 75) return { level: 'erhöht', text: 'Aufmerksam bleiben', detail: 'Kräftiger Niederschlag oder Böen möglich', color: '#d18a26', steps: 3 }
@@ -194,7 +258,7 @@ export const deriveDay = model => {
   return {
     tier, windy, score, headline,
     rainMax, rainSum, gusts, uv, high,
-    risk: getRisk({ current: model.c, hourly: model.h }),
+    risk: getRisk({ current: model.c, hourly: model.h }, model.now ?? model.c.time),
     summary: `${weatherLabel(model.c.weather_code)}, Höchstwert ${Math.round(high)} °. ${rainMax} % Regenrisiko, Böen bis ${Math.round(gusts)} km/h, UV-Maximum ${Math.round(uv)}.`,
     outdoor: {
       dry: ['Gute Bedingungen', 'Der Tag eignet sich gut für Bewegung draußen.'],
@@ -221,8 +285,8 @@ export const hoursOfDay = (hourly, date) => {
       apparent: hourly.apparent_temperature?.[i],
       code: hourly.weather_code[i],
       cloudCover: hourly.cloud_cover?.[i],
-      rainChance: hourly.precipitation_probability?.[i] ?? 0,
-      rainAmount: hourly.precipitation?.[i] ?? 0,
+      rainChance: hourly.precipitation_probability?.[i] ?? null,
+      rainAmount: hourly.precipitation?.[i] ?? null,
       /* Optional gelesen: Der Widget-Modus fragt nur die Felder ab, die er
          zeigt, ruft über dayCode() aber dieselbe Ableitung auf. */
       wind: hourly.wind_speed_10m?.[i],
@@ -261,14 +325,28 @@ export const dayCode = (hourly, date, fallback) => {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0]
 }
 
-export async function searchPlaces(query) {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=7&language=de&format=json`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Ortssuche derzeit nicht erreichbar')
-  return (await res.json()).results || []
+async function fetchJson(url, { signal, timeoutMs = 15_000 } = {}, message) {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  const timer = setTimeout(abort, timeoutMs)
+  if (signal?.aborted) abort()
+  signal?.addEventListener('abort', abort, { once: true })
+  try {
+    const res = await fetch(url, { signal: controller.signal })
+    if (!res.ok) throw new Error(message)
+    return await res.json()
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', abort)
+  }
 }
 
-export async function fetchWeather(latitude, longitude) {
+export async function searchPlaces(query, options) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=7&language=de&format=json`
+  return (await fetchJson(url, options, 'Ortssuche derzeit nicht erreichbar')).results || []
+}
+
+export async function fetchWeather(latitude, longitude, options = {}) {
   /* pressure_msl statt surface_pressure: Der Bodendruck fällt mit der Höhe
      (in 729 m sind 933 hPa völlig normal) und wurde von den Schwellen unten
      jedes Mal als "Tiefdruck" gelesen. Auf Meeresniveau zurückgerechnet ist
@@ -290,9 +368,11 @@ export async function fetchWeather(latitude, longitude) {
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=${current}&hourly=${hourly}&daily=${daily}&timezone=auto&forecast_days=10`
   const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=european_aqi,pm10,pm2_5,alder_pollen,birch_pollen,grass_pollen&hourly=european_aqi&timezone=auto`
 
-  const [weather, air] = await Promise.all([fetch(weatherUrl), fetch(airUrl)])
-  if (!weather.ok) throw new Error('Wetterdaten derzeit nicht erreichbar')
-  return { ...(await weather.json()), air: air.ok ? await air.json() : null }
+  const [weather, air] = await Promise.all([
+    fetchJson(weatherUrl, options, 'Wetterdaten derzeit nicht erreichbar'),
+    fetchJson(airUrl, { timeoutMs: 5000, ...options }, 'Luftqualität derzeit nicht erreichbar').catch(() => null)
+  ])
+  return { ...weather, air }
 }
 
 /**
@@ -304,13 +384,11 @@ export async function fetchWeather(latitude, longitude) {
  * das Widget sie nicht anzeigt: dayCode() braucht sie, um die Tagessymbole
  * genauso zu bestimmen wie die Hauptansicht.
  */
-export async function fetchWidgetWeather(latitude, longitude, days = 4) {
+export async function fetchWidgetWeather(latitude, longitude, days = 4, options) {
   const current = ['temperature_2m', 'apparent_temperature', 'is_day', 'weather_code', 'wind_speed_10m', 'wind_gusts_10m'].join(',')
   const hourly = ['temperature_2m', 'weather_code', 'precipitation_probability', 'precipitation', 'wind_speed_10m', 'is_day'].join(',')
   const daily = ['weather_code', 'temperature_2m_max', 'temperature_2m_min', 'precipitation_probability_max', 'sunrise', 'sunset'].join(',')
 
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=${current}&hourly=${hourly}&daily=${daily}&timezone=auto&forecast_days=${days}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Wetterdaten derzeit nicht erreichbar')
-  return res.json()
+  return fetchJson(url, options, 'Wetterdaten derzeit nicht erreichbar')
 }

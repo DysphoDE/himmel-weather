@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import {
   ChevronLeft, ChevronRight, Droplets, Eye, Sparkles, Sunrise, Sunset, Thermometer, Wind
 } from 'lucide-react'
@@ -6,21 +6,25 @@ import WeatherIcon from './WeatherIcon'
 import InfoButton from './Explain'
 import {
   cardinal, dayCode, fmtDate, fmtDayLong, fmtPrecip, fmtTime, hoursOfDay, outdoorScore,
-  uvAdvice, uvTier, weatherLabel
+  uvAdvice, uvTier, weatherLabel, weatherDate, measurement, kilometers
 } from './weather'
 
-const round = value => Math.round(value ?? 0)
+const round = measurement
 
-function WeatherMatrix({ timeline, isToday, nowIndex }) {
+function WeatherMatrix({ timeline, isToday, nowIndex, focusRequest }) {
   const scrollRef = useRef(null)
+  const date = timeline[0]?.time.slice(0, 10)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scroller = scrollRef.current
-    if (!scroller || !isToday) return
+    if (!scroller || !isToday || (focusRequest && focusRequest.id !== 'day-detail')) return
     const current = scroller.querySelector('.matrix-weather.is-now')
     if (!current) return
-    scroller.scrollLeft = Math.max(0, current.offsetLeft - scroller.clientWidth * .45)
-  }, [isToday, nowIndex, timeline])
+    const labelWidth = scroller.querySelector('.matrix-label').getBoundingClientRect().width
+    const left = scroller.scrollLeft + current.getBoundingClientRect().left - scroller.getBoundingClientRect().left
+    scroller.scrollTo({ left: Math.max(0, left + current.clientWidth / 2 - (scroller.clientWidth + labelWidth) / 2), behavior: 'instant' })
+    // Nur beim Öffnen/Tagwechsel springen, nicht bei neuen Wetterdaten.
+  }, [date, isToday, focusRequest])
 
   return (
     <div className="weather-matrix-scroll" ref={scrollRef}>
@@ -42,9 +46,9 @@ function WeatherMatrix({ timeline, isToday, nowIndex }) {
         <div className="matrix-label"><Droplets aria-hidden="true" /><b>Regen</b><small>Chance &amp; Menge</small></div>
         {timeline.map(hour => (
           <div key={`rain-${hour.time}`} className="matrix-value is-rain">
-            <b>{hour.rainChance} %</b>
-            <span aria-hidden="true"><i style={{ width: `${hour.rainChance}%` }} /></span>
-            <small>{hour.rainAmount ? fmtPrecip(hour.rainAmount) : 'trocken'}</small>
+            <b>{round(hour.rainChance)} %</b>
+            <span aria-hidden="true"><i style={{ width: `${round(hour.rainChance)}%` }} /></span>
+            <small>{hour.rainAmount === 0 ? 'trocken' : fmtPrecip(hour.rainAmount)}</small>
           </div>
         ))}
 
@@ -60,7 +64,7 @@ function WeatherMatrix({ timeline, isToday, nowIndex }) {
         {timeline.map(hour => (
           <div key={`air-${hour.time}`} className="matrix-value">
             <b>{round(hour.humidity)} %</b>
-            <small>{round(hour.visibility / 1000)} km Sicht</small>
+            <small>{kilometers(hour.visibility)} km Sicht</small>
           </div>
         ))}
       </div>
@@ -68,7 +72,7 @@ function WeatherMatrix({ timeline, isToday, nowIndex }) {
   )
 }
 
-export default function DayDetail({ model, dayIndex, onSelectDay, nowIndex }) {
+export default function DayDetail({ model, dayIndex, onSelectDay, nowIndex, focusRequest }) {
   const daily = model.d
   const date = daily.time[dayIndex]
   const hours = useMemo(() => hoursOfDay(model.h, date), [model.h, date])
@@ -77,12 +81,12 @@ export default function DayDetail({ model, dayIndex, onSelectDay, nowIndex }) {
   if (!hours.length) return null
 
   const code = dayCode(model.h, date, daily.weather_code[dayIndex])
-  const dayLength = (new Date(daily.sunset[dayIndex]) - new Date(daily.sunrise[dayIndex])) / 3600000
+  const dayLength = (weatherDate(daily.sunset[dayIndex]) - weatherDate(daily.sunrise[dayIndex])) / 3600000
   const warmest = hours.reduce((peak, hour) => hour.temperature > peak.temperature ? hour : peak, hours[0])
   const rainiest = hours.reduce((peak, hour) => hour.rainChance > peak.rainChance ? hour : peak, hours[0])
   const windiest = hours.reduce((peak, hour) => hour.gusts > peak.gusts ? hour : peak, hours[0])
-  const humidityAverage = hours.reduce((sum, hour) => sum + (hour.humidity || 0), 0) / hours.length
-  const visibilityMinimum = Math.min(...hours.map(hour => hour.visibility || Infinity))
+  const humidityAverage = hours.every(hour => Number.isFinite(hour.humidity)) ? hours.reduce((sum, hour) => sum + hour.humidity, 0) / hours.length : null
+  const visibilityMinimum = hours.every(hour => Number.isFinite(hour.visibility)) ? Math.min(...hours.map(hour => hour.visibility)) : null
   const timeline = hours
   /* Dieselbe Rechnung wie auf der Heute-Seite: Vorher hatte diese Ansicht
      eigene Gewichte und zeigte für denselben Tag eine andere Punktzahl. */
@@ -92,7 +96,7 @@ export default function DayDetail({ model, dayIndex, onSelectDay, nowIndex }) {
     uv: daily.uv_index_max[dayIndex],
     high: daily.temperature_2m_max[dayIndex]
   })
-  const rainCopy = (daily.precipitation_sum[dayIndex] || 0) < .2
+  const rainCopy = !Number.isFinite(daily.precipitation_sum[dayIndex]) ? 'Keine Niederschlagsdaten verfügbar.' : daily.precipitation_sum[dayIndex] < .2
     ? 'Der Tag bleibt voraussichtlich trocken.'
     : `Die höchste Regenchance liegt gegen ${fmtTime(rainiest.time)} bei ${rainiest.rainChance} %.`
   const story = `Am wärmsten wird es gegen ${fmtTime(warmest.time)} mit ${round(warmest.temperature)}°. ${rainCopy} Stärkste Böen gegen ${fmtTime(windiest.time)}.`
@@ -109,7 +113,7 @@ export default function DayDetail({ model, dayIndex, onSelectDay, nowIndex }) {
       label: 'Niederschlag',
       topic: 'precip',
       value: fmtPrecip(daily.precipitation_sum[dayIndex]),
-      note: `${daily.precipitation_probability_max[dayIndex] ?? 0} % maximal`
+      note: `${round(daily.precipitation_probability_max[dayIndex])} % maximal`
     },
     {
       icon: Wind,
@@ -204,7 +208,7 @@ export default function DayDetail({ model, dayIndex, onSelectDay, nowIndex }) {
               <div><span>STUNDENPLAN</span><h3>Was dich wann erwartet.</h3></div>
               <p>Alle 24 Stunden · horizontal ziehen</p>
             </div>
-            <WeatherMatrix timeline={timeline} isToday={isToday} nowIndex={nowIndex} />
+            <WeatherMatrix timeline={timeline} isToday={isToday} nowIndex={nowIndex} focusRequest={focusRequest} />
           </article>
         </div>
       </div>

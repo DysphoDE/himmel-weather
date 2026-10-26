@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AirVent, Bike, CalendarDays, ChevronRight, Clock3, CloudSun, Droplets, Eye, Flower2,
-  Gauge, LayoutDashboard, LocateFixed, MapPin, Search, Sparkles, Sunrise,
-  Sunset, Umbrella, Wind, X, Zap
+  Gauge, LayoutDashboard, MapPin, Search, Sparkles, Sunrise,
+  Umbrella, Wind, Zap
 } from 'lucide-react'
 import Radar, { MiniRadar } from './Radar'
 import ChartDot from './ChartDot'
@@ -14,14 +14,17 @@ import SkyScene from './SkyScene'
 import MobileShell from './MobileShell'
 import ErrorBoundary from './ErrorBoundary'
 import useMediaQuery from './useMediaQuery'
+import useWeather from './useWeather'
+import SearchPanel from './SearchPanel'
+import WeatherStatus from './WeatherStatus'
 import {
   aqiTier, cardinal, dayCode, deriveDay, fmtDay, fmtPrecip, fmtTime, hourNumber, humidityTier,
-  pollenPhrase, pressureTier, hoursOfDay, searchPlaces, uvAdvice, uvTier, visibilityTier,
-  weatherLabel, fetchWeather, DEFAULT_PLACE
+  pollenPhrase, pollenPeak, pollenValue, pressureTier, hoursOfDay, uvAdvice, uvTier, visibilityTier,
+  weatherLabel, currentHourIndex, localTime, formatWeatherDate, fmtDayLong, hourOf, addWeatherHour, bestWeatherWindow, measurement, kilometers, DEFAULT_PLACE
 } from './weather'
 
 const DESKTOP = '(min-width: 1180px)'
-const round = n => Math.round(n ?? 0)
+const round = measurement
 
 const SECTIONS = [
   { id: 'overview', label: 'Übersicht', short: 'Übersicht', icon: LayoutDashboard },
@@ -56,65 +59,6 @@ function scrollToSection(id) {
   })
 }
 
-/* ── Ortssuche ─────────────────────────────────────────────────────────────── */
-
-function SearchPanel({ open, onClose, onPick, onLocate }) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (query.trim().length < 2) { setResults([]); return }
-    const timer = setTimeout(async () => {
-      setBusy(true)
-      try { setResults(await searchPlaces(query)) } catch { setResults([]) }
-      setBusy(false)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [query])
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
-
-  return (
-    <div className="search-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="search-panel" role="dialog" aria-modal="true" aria-label="Ort suchen">
-        <div className="search-input">
-          <Search aria-hidden="true" />
-          <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Stadt oder Ort suchen …" aria-label="Ortsname" />
-          <button type="button" onClick={onClose} aria-label="Suche schließen"><X /></button>
-        </div>
-
-        <button type="button" className="locate-row" onClick={onLocate}>
-          <LocateFixed aria-hidden="true" />
-          <span><b>Meinen Standort verwenden</b><small>Präzise Vorhersage für deine Position</small></span>
-          <ChevronRight aria-hidden="true" />
-        </button>
-
-        <div className="search-results">
-          {busy && <p className="search-state">Suche läuft …</p>}
-          {!busy && query.trim().length >= 2 && !results.length && <p className="search-state">Kein Ort gefunden</p>}
-          {results.map(place => (
-            <button type="button" key={place.id} onClick={() => onPick(place)}>
-              <MapPin aria-hidden="true" />
-              <span><b>{place.name}</b><small>{[place.admin1, place.country].filter(Boolean).join(', ')}</small></span>
-              <span className="search-coords">{round(place.latitude)}° / {round(place.longitude)}°</span>
-            </button>
-          ))}
-        </div>
-
-        <p className="search-credit">Ortssuche · Open-Meteo Geocoding</p>
-      </div>
-    </div>
-  )
-}
-
 /* ── Diagramme im Dashboard ────────────────────────────────────────────────── */
 
 /**
@@ -127,10 +71,18 @@ function SearchPanel({ open, onClose, onPick, onLocate }) {
  * hier „gute Luft“.
  */
 function AqiTrend({ values, labels }) {
-  const top = Math.max(100, Math.ceil(Math.max(...values, 0) / 20) * 20)
+  const available = values.filter(Number.isFinite)
+  if (!available.length) return <p className="data-unavailable">Keine Daten für den Stundenverlauf</p>
+  const top = Math.max(100, Math.ceil(Math.max(...available) / 20) * 20)
   const x = i => 4 + i * (92 / Math.max(1, values.length - 1))
   const y = v => 82 - Math.min(1, Math.max(0, v) / top) * 62
-  const points = values.map((v, i) => `${x(i)},${y(v)}`).join(' ')
+  const segments = []
+  let segment = []
+  values.forEach((value, i) => {
+    if (Number.isFinite(value)) segment.push({ value, i })
+    else if (segment.length) { segments.push(segment); segment = [] }
+  })
+  if (segment.length) segments.push(segment)
   return (
     <div className="area-chart">
       <svg viewBox="0 0 100 92" preserveAspectRatio="none" aria-hidden="true">
@@ -140,11 +92,11 @@ function AqiTrend({ values, labels }) {
             <stop offset="1" stopColor="var(--rain)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <polygon points={`${x(0)},86 ${points} ${x(values.length - 1)},86`} fill="url(#aqFill)" />
-        <polyline points={points} fill="none" stroke="var(--rain)" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
-        {/* Nur die aktuelle Stunde bekommt eine Marke – acht Punkte auf einer
-            flachen Linie sind Rauschen, keine Information. */}
-        <ChartDot x={x(0)} y={y(values[0])} size={6} />
+        {segments.map((part, index) => part.length > 1 ? <g key={index}>
+          <polygon points={`${x(part[0].i)},86 ${part.map(p => `${x(p.i)},${y(p.value)}`).join(' ')} ${x(part.at(-1).i)},86`} fill="url(#aqFill)" />
+          <polyline points={part.map(p => `${x(p.i)},${y(p.value)}`).join(' ')} fill="none" stroke="var(--rain)" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
+        </g> : <ChartDot key={index} x={x(part[0].i)} y={y(part[0].value)} size={6} />)}
+        {Number.isFinite(values[0]) && segments[0].length > 1 && <ChartDot x={x(0)} y={y(values[0])} size={6} />}
       </svg>
       <div>{labels.map((l, i) => <span key={i}>{l}</span>)}</div>
     </div>
@@ -152,20 +104,22 @@ function AqiTrend({ values, labels }) {
 }
 
 function AqiInstrument({ value, values, labels, pm25, pm10 }) {
-  const fill = `${Math.min(75, Math.max(0, value) / 100 * 75)}%`
-  const low = Math.min(...values)
-  const high = Math.max(...values)
+  const fill = `${Number.isFinite(value) ? Math.min(75, Math.max(0, value) / 100 * 75) : 0}%`
+  const available = values.filter(Number.isFinite)
+  const low = Math.min(...available)
+  const high = Math.max(...available)
   return (
     <div className="aqi-instrument">
       <div className="aqi-gauge" style={{ '--aqi-fill': fill }}>
-        <span><b>{round(value)}</b><small>AQI</small></span>
+        <span><b>{round(value)}</b><small>{Number.isFinite(value) ? 'AQI' : 'Keine Daten'}</small></span>
       </div>
       <div className="aqi-trend">
         {/* Die Wortmarke steht schon in der Kartenüberschrift; hier ist die
             Spanne der nächsten Stunden die neue Information. */}
         <p>
           <span>NÄCHSTE 8 STUNDEN</span>
-          <b>{low === high ? `gleichbleibend ${round(low)}` : `${round(low)}–${round(high)}`} AQI</b>
+          <b>{available.length ? `${low === high ? `gleichbleibend ${round(low)}` : `${round(low)}–${round(high)}`} AQI` : 'Keine Daten'}</b>
+          {available.length > 0 && available.length < 8 && <small>{available.length} von 8 Stunden verfügbar</small>}
         </p>
         <AqiTrend values={values} labels={labels} />
       </div>
@@ -186,7 +140,7 @@ function AqiInstrument({ value, values, labels, pm25, pm10 }) {
  * gelten je Stunde und werden zwischen zwei Stunden nicht interpoliert.
  */
 function RainInstrument({ values, labels }) {
-  const dry = values.every(value => Number(value) === 0)
+  const dry = values.length > 0 && values.every(value => value === 0)
   const level = value => Math.min(100, Math.max(0, Number(value) || 0))
   return (
     <div className={`rain-instrument${dry ? ' is-dry' : ''}`}>
@@ -222,7 +176,7 @@ function UvInstrument({ values, labels }) {
 function DesktopShell({ model, data, place, day, dayIndex, active, onSearch, onSelectDay, goTo }) {
   const air = data.air?.current || {}
   const aqiHours = data.air?.hourly?.european_aqi || []
-  const aqiStart = Math.max(0, (data.air?.hourly?.time || []).findIndex(t => new Date(t) >= new Date()))
+  const aqiStart = currentHourIndex(data.air?.hourly?.time || [], model.now)
   const aqiValues = aqiHours.slice(aqiStart, aqiStart + 8)
   const hourLabels = model.h.time.slice(model.hour, model.hour + 8).map((t, i) => i === 0 ? 'Jetzt' : hourNumber(t))
   const rain = model.h.precipitation_probability.slice(model.hour, model.hour + 8)
@@ -259,8 +213,8 @@ function DesktopShell({ model, data, place, day, dayIndex, active, onSearch, onS
           </button>
 
           <p className="dashboard-date">
-            <b>Heute, {new Date().toLocaleDateString('de-DE', { weekday: 'long' })}</b>
-            <span>{new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} · Stand {fmtTime(model.c.time)}</span>
+            <b>Heute, {fmtDayLong(model.d.time[0])}</b>
+            <span>{formatWeatherDate(model.d.time[0], { day: '2-digit', month: 'long', year: 'numeric' })} · Stand {fmtTime(model.c.time)}</span>
           </p>
         </div>
 
@@ -306,7 +260,7 @@ function DesktopShell({ model, data, place, day, dayIndex, active, onSearch, onS
                   onClick={() => onSelectDay(i)}
                 >
                   <span>{i === 0 ? 'Heute' : fmtDay(date)}</span>
-                  <small>{new Date(date).toLocaleDateString('de-DE', { day: '2-digit' })}</small>
+                  <small>{formatWeatherDate(date, { day: '2-digit' })}</small>
                   <WeatherIcon code={dayCode(model.h, date, model.d.weather_code[i])} size={28} />
                   <b>{round(model.d.temperature_2m_max[i])}°</b>
                   <em>{round(model.d.temperature_2m_min[i])}°</em>
@@ -321,7 +275,7 @@ function DesktopShell({ model, data, place, day, dayIndex, active, onSearch, onS
             <article><Sunrise aria-hidden="true" /><span>SONNENAUFGANG</span><b>{fmtTime(model.d.sunrise[0])}</b><small>Untergang {fmtTime(model.d.sunset[0])}</small></article>
             <article><Gauge aria-hidden="true" /><span>GEFÜHLT<InfoButton topic="apparent" /></span><b>{round(model.c.apparent_temperature)}°</b><small>Gemessen {round(model.c.temperature_2m)}°</small></article>
             <article><Wind aria-hidden="true" /><span>WIND</span><b>{round(model.c.wind_speed_10m)} <em>km/h</em></b><small>Böen bis {round(model.c.wind_gusts_10m)} km/h</small></article>
-            <article><Eye aria-hidden="true" /><span>SICHT<InfoButton topic="visibility" /></span><b>{round(model.h.visibility[model.hour] / 1000)} <em>km</em></b><small>{visibilityTier(model.h.visibility[model.hour])}</small></article>
+            <article><Eye aria-hidden="true" /><span>SICHT<InfoButton topic="visibility" /></span><b>{kilometers(model.h.visibility[model.hour])} <em>km</em></b><small>{visibilityTier(model.h.visibility[model.hour])}</small></article>
             <article><Droplets aria-hidden="true" /><span>FEUCHTE<InfoButton topic="humidity" /></span><b>{round(model.c.relative_humidity_2m)}%</b><small>{humidityTier(model.c.relative_humidity_2m)}</small></article>
             <article><AirVent aria-hidden="true" /><span>LUFTDRUCK<InfoButton topic="pressure" /></span><b>{round(model.c.pressure_msl)}</b><small>hPa · {pressureTier(model.c.pressure_msl)}</small></article>
           </div>
@@ -361,8 +315,8 @@ function DesktopShell({ model, data, place, day, dayIndex, active, onSearch, onS
               <AirVent aria-hidden="true" />
             </div>
             <AqiInstrument
-              value={air.european_aqi || 0}
-              values={aqiValues.length ? aqiValues : Array(8).fill(air.european_aqi || 0)}
+              value={air.european_aqi}
+              values={aqiValues}
               labels={hourLabels}
               pm25={air.pm2_5}
               pm10={air.pm10}
@@ -390,137 +344,21 @@ function DesktopShell({ model, data, place, day, dayIndex, active, onSearch, onS
   )
 }
 
-/* ── Hero (<1180px) ────────────────────────────────────────────────────────── */
-
-function MobileHero({ model, place, elevation, onSearch, onSelectDay, goTo }) {
-  return (
-    <>
-      <header className="site-header">
-        <p className="brand"><span aria-hidden="true">h</span>himmel<i aria-hidden="true">°</i></p>
-        <button type="button" className="location-button" onClick={onSearch}>
-          <MapPin size={16} aria-hidden="true" />
-          <span>{place.name}</span>
-          <Search size={15} aria-hidden="true" />
-        </button>
-      </header>
-
-      <section className="hero" id="overview">
-        <SkyScene
-          variant="tall" className="hero-scene"
-          weatherCode={model.c.weather_code} cloudCover={model.c.cloud_cover}
-          sunrise={model.d.sunrise[0]} sunset={model.d.sunset[0]}
-          latitude={place.latitude} longitude={place.longitude} now={model.c.time}
-          population={place.population} elevation={elevation}
-        />
-        <div className="hero-copy">
-          <span className="eyebrow"><i />{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' }).toUpperCase()}</span>
-          <h1>Hallo {place.name}.<br /><em>So wird dein Tag.</em></h1>
-          <p className="hero-summary">
-            <WeatherIcon code={model.c.weather_code} size={21} isDay={model.isDay} />
-            {weatherLabel(model.c.weather_code)} · Gefühlt {round(model.c.apparent_temperature)}° · Wind {round(model.c.wind_speed_10m)} km/h
-          </p>
-          <p className="hero-temp"><b>{round(model.c.temperature_2m)}</b><sup>°</sup><span>JETZT</span></p>
-        </div>
-
-        <div className="hero-sheet">
-          <div className="sheet-intro">
-            <span>WETTER HEUTE</span>
-            <b>{weatherLabel(model.c.weather_code)}</b>
-            <small><Sunrise aria-hidden="true" /> {fmtTime(model.d.sunrise[0])} <i /> <Sunset aria-hidden="true" /> {fmtTime(model.d.sunset[0])}</small>
-          </div>
-          <div className="sheet-hours">
-            {model.h.time.slice(model.hour, model.hour + 5).map((t, i) => {
-              const idx = model.hour + i
-              return (
-                <button type="button" key={t} onClick={() => onSelectDay(0)}>
-                  <span>{i === 0 ? 'Jetzt' : new Date(t).toLocaleTimeString('de-DE', { hour: '2-digit' })}</span>
-                  <WeatherIcon code={model.h.weather_code[idx]} size={25} isDay={model.h.is_day?.[idx] !== 0} />
-                  <b>{round(model.h.temperature_2m[idx])}°</b>
-                  <small><Droplets aria-hidden="true" /> {model.h.precipitation_probability[idx]}%</small>
-                </button>
-              )
-            })}
-          </div>
-          <button type="button" className="sheet-more" onClick={() => goTo('day-detail')}>
-            Alle 24 Stunden <ChevronRight aria-hidden="true" />
-          </button>
-        </div>
-      </section>
-    </>
-  )
-}
-
-/* ── Messwerte, die es unter 1180px sonst nirgends gibt ────────────────────── */
-
-function MetricsSection({ model, data }) {
-  const air = data.air?.current || {}
-  const tiles = [
-    { icon: Gauge, label: 'Gefühlt', topic: 'apparent', value: `${round(model.c.apparent_temperature)}°`, note: `Gemessen ${round(model.c.temperature_2m)}°` },
-    { icon: Wind, label: 'Wind', topic: 'wind', value: `${round(model.c.wind_speed_10m)} km/h`, note: `Böen bis ${round(model.c.wind_gusts_10m)} km/h · aus ${cardinal(model.c.wind_direction_10m)}` },
-    { icon: Droplets, label: 'Luftfeuchte', topic: 'humidity', value: `${round(model.c.relative_humidity_2m)} %`, note: humidityTier(model.c.relative_humidity_2m) },
-    { icon: Gauge, label: 'Luftdruck', topic: 'pressure', value: `${round(model.c.pressure_msl)} hPa`, note: pressureTier(model.c.pressure_msl) },
-    { icon: Eye, label: 'Sichtweite', topic: 'visibility', value: `${round(model.h.visibility[model.hour] / 1000)} km`, note: visibilityTier(model.h.visibility[model.hour]) },
-    { icon: Sparkles, label: 'UV-Index', topic: 'uv', value: `${round(model.h.uv_index[model.hour])}`, note: uvAdvice(model.h.uv_index[model.hour]) },
-    { icon: AirVent, label: 'Luftqualität', topic: 'aqi', value: `${round(air.european_aqi)} AQI`, note: `${aqiTier(air.european_aqi)} · PM2,5 ${round(air.pm2_5)}` },
-    { icon: Sunrise, label: 'Sonnenlicht', value: fmtTime(model.d.sunrise[0]), note: `Untergang ${fmtTime(model.d.sunset[0])}` }
-  ]
-  return (
-    <section className="metrics-section" aria-label="Aktuelle Messwerte">
-      <div className="metrics-grid">
-        {tiles.map(({ icon: Icon, label, topic, value, note }) => (
-          <article key={label}>
-            <Icon aria-hidden="true" />
-            <span>{label}{topic && <InfoButton topic={topic} />}</span>
-            <b>{value}</b>
-            <small>{note}</small>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 /* ── Heute: Briefing und Empfehlungen ──────────────────────────────────────── */
 
 function TodaySection({ model, data, day, goTo }) {
   const hours = hoursOfDay(model.h, model.d.time[0])
   const pollen = data.air?.current || {}
-  const pollenPeak = Math.max(pollen.alder_pollen || 0, pollen.birch_pollen || 0, pollen.grass_pollen || 0)
+  const peakPollen = pollenPeak(pollen)
   const aqi = pollen.european_aqi
-  const currentHour = new Date(model.c.time).getHours()
+  const currentHour = hourOf(model.now)
   const stages = hours.filter((_, index) => index % 3 === 0)
-  const daytime = hours.filter(hour => {
-    const value = new Date(hour.time).getHours()
-    return value >= 7 && value <= 20
-  })
-  const remainingDaytime = daytime.filter(hour => new Date(hour.time).getHours() >= currentHour)
-  const outdoorHours = remainingDaytime.length ? remainingDaytime : daytime
-  const bestIsPast = remainingDaytime.length === 0
-
-  const windows = outdoorHours.map((hour, index) => {
-    const block = outdoorHours.slice(index, index + 3)
-    const score = block.reduce((sum, item) => sum
-      + 100
-      - item.rainChance * .75
-      - Math.max(0, item.gusts - 25) * 1.1
-      - Math.max(0, item.uv - 6) * 5
-      - Math.max(0, 8 - item.temperature) * 3
-      - Math.max(0, item.temperature - 28) * 3, 0) / block.length
-    return { block, score }
-  })
-  const best = windows.sort((a, b) => b.score - a.score)[0]
-  const bestStart = best?.block[0]
-  const bestEnd = best?.block.at(-1)
-  const bestLabel = bestStart && bestEnd
-    ? `${fmtTime(bestStart.time)}–${fmtTime(new Date(new Date(bestEnd.time).getTime() + 3600000))}`
-    : 'Heute flexibel bleiben'
-  const bestRain = best ? Math.max(...best.block.map(hour => hour.rainChance)) : day.rainMax
-  const bestGust = best ? Math.max(...best.block.map(hour => hour.gusts)) : day.gusts
+  const best = bestWeatherWindow(hours, model.now)
 
   const wetHours = hours.filter(hour => hour.rainChance >= 35 || hour.rainAmount >= .2)
   const rainPeak = Math.max(...hours.map(hour => hour.rainChance), 0)
   const rainLabel = wetHours.length
-    ? `${fmtTime(wetHours[0].time)}–${fmtTime(new Date(new Date(wetHours.at(-1).time).getTime() + 3600000))}`
+    ? `${fmtTime(wetHours[0].time)}–${fmtTime(addWeatherHour(wetHours.at(-1).time))}`
     : 'Kein Regenfenster'
   const uvPeak = hours.reduce((peak, hour) => hour.uv > (peak?.uv ?? -1) ? hour : peak, null)
   const nowStage = Math.floor(currentHour / 3) * 3
@@ -552,18 +390,18 @@ function TodaySection({ model, data, day, goTo }) {
         </div>
         <div className="today-stages">
           {stages.map(hour => {
-            const stageHour = new Date(hour.time).getHours()
+            const stageHour = hourOf(hour.time)
             const isNow = stageHour === nowStage
             return (
               <div
                 key={hour.time}
                 className={`today-stage${hour.isDay ? ' is-day' : ' is-night'}${isNow ? ' is-now' : ''}${stageHour < nowStage ? ' is-past' : ''}`}
-                style={{ '--rain-level': `${hour.rainChance}%` }}
+                style={{ '--rain-level': `${round(hour.rainChance)}%` }}
               >
                 <span>{isNow ? 'Jetzt' : fmtTime(hour.time)}</span>
                 <WeatherIcon code={hour.code} size={27} isDay={hour.isDay} />
                 <b>{round(hour.temperature)}°</b>
-                <small><Droplets aria-hidden="true" />{hour.rainChance}%</small>
+                <small><Droplets aria-hidden="true" />{round(hour.rainChance)}%</small>
                 <small><Wind aria-hidden="true" />{round(hour.wind)} km/h</small>
                 <i aria-hidden="true" />
               </div>
@@ -573,12 +411,12 @@ function TodaySection({ model, data, day, goTo }) {
       </article>
 
       <div className="today-decisions">
-        <article className="today-decision is-best" style={{ '--score': `${day.score}%` }}>
+        <article className="today-decision is-best" style={{ '--score': `${best.score ?? 0}%` }}>
           <Bike aria-hidden="true" />
-          <span>{bestIsPast ? 'BESTES FENSTER HEUTE' : 'BESTES RESTFENSTER'}<InfoButton topic="score" /></span>
-          <h3>{bestLabel}</h3>
-          <p>{bestIsPast ? 'Dieses Zeitfenster ist bereits vorbei. ' : ''}{bestRain}% Regenrisiko · Böen bis {round(bestGust)} km/h. {day.outdoor[0]}.</p>
-          <div><i /><small>{day.score}/100 Eignung</small></div>
+          <span>{best.past ? 'BESTES FENSTER HEUTE' : 'BESTES RESTFENSTER'}<InfoButton topic="windowScore" /></span>
+          <h3>{best.label}</h3>
+          <p>{best.past ? 'Dieses Zeitfenster ist bereits vorbei. ' : ''}{best.detail} {round(best.rain)}% Regenrisiko · Böen bis {round(best.gusts)} km/h.</p>
+          <div><i /><small>{round(best.score)}/100 Eignung für dieses Fenster</small></div>
         </article>
 
         <article className="today-decision">
@@ -600,7 +438,7 @@ function TodaySection({ model, data, day, goTo }) {
           <Flower2 aria-hidden="true" />
           <span>LUFT & POLLEN<InfoButton topic="airPollen" /></span>
           <h3>{aqiTier(aqi)}</h3>
-          <p>{round(aqi)} AQI · {pollenPhrase(pollenPeak)}. Erle {round(pollen.alder_pollen)}, Birke {round(pollen.birch_pollen)}, Gräser {round(pollen.grass_pollen)} Pollen/m³.</p>
+          <p>{round(aqi)} AQI · {pollenPhrase(peakPollen)}. Erle {pollenValue(pollen.alder_pollen)}, Birke {pollenValue(pollen.birch_pollen)}, Gräser {pollenValue(pollen.grass_pollen)} Pollen/m³.</p>
         </article>
       </div>
     </section>
@@ -625,9 +463,9 @@ export default function App() {
       return Number.isFinite(saved?.latitude) && Number.isFinite(saved?.longitude) ? saved : DEFAULT_PLACE
     } catch { return DEFAULT_PLACE }
   })
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data, loading, error: weatherError, now, refreshing, refresh } = useWeather(place)
+  const [locationError, setLocationError] = useState('')
+  const error = locationError || (!data ? weatherError : '')
   const [searchOpen, setSearchOpen] = useState(false)
   const [dayIndex, setDayIndex] = useState(0)
   const [active, setActive] = useState('overview')
@@ -636,13 +474,8 @@ export default function App() {
   const [scrollRequest, setScrollRequest] = useState(null)
 
   useEffect(() => {
-    let alive = true
-    setLoading(true); setError('')
-    fetchWeather(place.latitude, place.longitude)
-      .then(d => { if (alive) { setData(d); setDayIndex(0); setLoading(false) } })
-      .catch(e => { if (alive) { setError(e.message); setLoading(false) } })
-    return () => { alive = false }
-  }, [place])
+    setDayIndex(0)
+  }, [place, data?.daily.time[0]])
 
   /* Ein Sprungwunsch wird als State vermerkt und erst nach dem Commit ausgeführt.
      Sonst scrollt der Klick auf einen Tag noch im alten Layout – die Tagesansicht
@@ -671,16 +504,17 @@ export default function App() {
      den Standardort weg – eine Änderung des Standards wäre damit für alle
      wirkungslos geblieben, die die Seite schon einmal geöffnet hatten. */
   const pickPlace = next => {
+    setLocationError('')
     setPlace(next)
     setSearchOpen(false)
     try { localStorage.setItem('himmel-place', JSON.stringify(next)) } catch { /* privater Modus */ }
   }
 
   const locate = () => {
-    if (!navigator.geolocation) { setError('Standortfreigabe wird von diesem Browser nicht unterstützt.'); return }
+    if (!navigator.geolocation) { setLocationError('Standortfreigabe wird von diesem Browser nicht unterstützt.'); return }
     navigator.geolocation.getCurrentPosition(
       pos => pickPlace({ name: 'Mein Standort', country: 'Aktuelle Position', latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      () => setError('Standort konnte nicht ermittelt werden.')
+      () => setLocationError('Standort konnte nicht ermittelt werden.')
     )
   }
 
@@ -699,10 +533,10 @@ export default function App() {
   const model = useMemo(() => {
     if (!data) return null
     const h = data.hourly
-    const next = h.time.findIndex(t => new Date(t) > new Date())
-    const hour = next <= 0 ? 0 : next - 1
-    return { c: data.current, h, d: data.daily, hour, isDay: data.current.is_day !== 0 }
-  }, [data])
+    const currentTime = localTime(data.timezone, now)
+    const hour = currentHourIndex(h.time, currentTime)
+    return { c: data.current, h, d: data.daily, hour, now: currentTime, isDay: data.current.is_day !== 0 }
+  }, [data, now])
 
   const day = useMemo(() => (model ? deriveDay(model) : null), [model])
 
@@ -723,17 +557,19 @@ export default function App() {
   return (
     <>
       {loading && <Loading />}
+      {weatherError && data && !locationError && <WeatherStatus place={place} data={data} refreshing={refreshing} onRetry={refresh} />}
 
       {!loading && error && (
         <div className="app-state is-error" role="alert">
           <Zap aria-hidden="true" />
           <h1>Wetterpause.</h1>
           <p>{error}</p>
-          <button type="button" onClick={() => setPlace({ ...place })}>Noch einmal versuchen</button>
+          <button type="button" onClick={() => { setLocationError(''); setPlace({ ...place }) }}>Noch einmal versuchen</button>
+          <button type="button" onClick={() => setSearchOpen(true)}>Anderen Ort wählen</button>
         </div>
       )}
 
-      {!loading && model && (isDesktop ? (
+      {!loading && !error && model && (isDesktop ? (
         <>
           <DesktopShell
             model={model} data={data} place={place} day={day} dayIndex={dayIndex}
@@ -744,7 +580,7 @@ export default function App() {
             <TodaySection model={model} data={data} day={day} goTo={goTo} />
 
             <ErrorBoundary fallback={<p className="card-fallback">Tagesansicht konnte nicht aufgebaut werden.</p>}>
-              <DayDetail model={model} dayIndex={dayIndex} onSelectDay={selectDay} nowIndex={model.hour} />
+              <DayDetail model={model} dayIndex={dayIndex} onSelectDay={selectDay} nowIndex={model.hour} focusRequest={scrollRequest} />
             </ErrorBoundary>
 
             <ErrorBoundary fallback={

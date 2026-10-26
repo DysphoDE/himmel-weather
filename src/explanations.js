@@ -120,6 +120,14 @@ export const EXPLAIN = {
     normal: 'Zwei bis vier Grad Abweichung sind normal. Bei kräftigem Wind im Winter werden es auch acht Grad weniger.'
   },
 
+  windowScore: {
+    title: 'Eignung des Zeitfensters',
+    subtitle: 'Die besten nächsten Stunden',
+    meaning: 'Diese Zahl bewertet ausschließlich das angezeigte Zeitfenster. Ein regnerischer Vormittag zieht die Bewertung eines trockenen Nachmittags nicht herunter.',
+    method: 'Verglichen werden zusammenhängende Fenster von drei Stunden zwischen 7 und 21 Uhr. Sind weniger Stunden übrig, werden diese verglichen. Der Wert ist der Mittelwert der stündlichen Eignung: Abzüge gibt es für Regenrisiko, Böen über 25 km/h, UV über 6, Hitze über 28° und Kälte unter 8°.',
+    scale: SCORE_SCALE,
+    note: 'Fehlen Stundenwerte, gibt es keine Bewertung. Nach 21 Uhr wird das beste bereits vergangene Fenster ausdrücklich als vorbei gekennzeichnet.'
+  },
   score: {
     title: 'Draußen-Eignung',
     subtitle: 'Eine Einschätzung von himmel°',

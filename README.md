@@ -42,8 +42,13 @@ Die Anwendung läuft dann auf `http://localhost:5173`.
 | `npm run dev` | Entwicklungsserver mit Hot Reload |
 | `npm run build` | Produktionsbündel nach `dist/` (zwei Einstiegspunkte) |
 | `npm run preview` | Gebautes Bündel lokal ausliefern |
-| `npm test` | Radar-Tests im Node-Testrunner |
+| `npm test` | Wetter- und Radar-Tests im Node-Testrunner |
 | `npm run test:radar:browser` | Browser-Tests für das Radar (braucht Playwright) |
+| `npm run test:app:browser` | Browser-Tests für Wetter, Suche und Navigation (braucht Playwright) |
+| `npm run test:browser` | Beide Browser-Testläufe mit eigenem Testserver |
+| `npm run check` | Unit-Tests, Produktionsbuild und alle Browser-Tests |
+
+Für Browser-Tests einmalig `npx playwright install chromium` ausführen. Danach startet `npm run check` den vollständigen Testlauf samt eigenem Server. Derselbe Befehl läuft in GitHub Actions bei Pushes und Pull Requests.
 
 ### Ausliefern
 
@@ -70,7 +75,10 @@ Alle Abfragen laufen direkt aus dem Browser. Kein Schlüssel, keine Registrierun
 
 ```
 src/
-  App.jsx            Dashboard ab 1180 px, Ortssuche, Abschnittsnavigation
+  App.jsx            Dashboard ab 1180 px, Abschnittsnavigation
+  SearchPanel.jsx    Ortssuche mit Tastaturbedienung und nativem Dialog
+  WeatherStatus.jsx  Letzte Vorhersage mit Ort und Zeitstempel bei Netzfehlern
+  useWeather.js      Ortgebundene Daten, Nachladen und Wiederholung
   MobileShell.jsx    Eigene Ansicht für schmale Bildschirme
   DayDetail.jsx      24-Stunden-Verlauf eines Tages
   DayList.jsx        Zehn-Tage-Liste
@@ -94,10 +102,16 @@ Niederschlag wird in L/m² angegeben statt in Millimetern — dieselbe Zahl, abe
 
 ## Tests
 
-`npm test` prüft die Radarlogik im Node-Testrunner: Paarung der Zeitachsen, Bereitschaft der Quellen, veröffentlichte DWD-Zeiten, Zwischenspeicher und Erholung nach Fehlern.
+`npm test` prüft die Wetter- und Radarlogik im Node-Testrunner: Ortszeiten und Kalenderdaten unabhängig von der Browserzeitzone, fehlende Pollendaten, Ausfälle optionaler Datenquellen, Zeitlimits und Abbruch von Anfragen sowie Radarzeitachsen, Bereitschaft der Quellen, Zwischenspeicher und Erholung nach Fehlern.
 
-Der Browser-Testlauf (`npm run test:radar:browser`, braucht einen laufenden Entwicklungsserver und Playwright) fährt `tests/radar-harness.html` mit nachgebildeten Antworten: Mounten unter StrictMode, verzögerte Kacheln, Fehler und Wiederholungen, Springen in der Zeit, Erholung nach Zoom und Verschieben, Wiedergabe. Einzelheiten in [tests/README.md](tests/README.md).
+`npm run test:app:browser` prüft mit festen API-Antworten Ortswechsel, Nachladen und Tageswechsel, Suchdialog und Tastaturbedienung, fehlende Messwerte, Widget-Zeiten, mobile Tagesnavigation, Zeitfensterbewertungen und den Sprung zur aktuellen Stunde. Die Hauptansicht lädt alle zehn Minuten nach, erkennt den Tageswechsel am Wetterort und prüft beim Zurückkehren in den Tab, ob die Daten aufgefrischt werden müssen.
+
+Der Radar-Browser-Testlauf (`npm run test:radar:browser`, startet seinen Server selbst) fährt `tests/radar-harness.html` mit nachgebildeten Antworten: Mounten unter StrictMode, verzögerte Kacheln, Fehler und Wiederholungen, Springen in der Zeit, Erholung nach Zoom und Verschieben, Wiedergabe. Einzelheiten in [tests/README.md](tests/README.md).
 
 ## Sprache
 
 Oberfläche, Kommentare und Dokumentation sind auf Deutsch. Die Anwendung ist für den deutschsprachigen Raum gebaut — das Radar deckt Deutschland und die Nachbarländer ab, Formate und Einheiten folgen `de-DE`.
+
+Bei fehlgeschlagenem Nachladen bleibt die letzte Vorhersage für denselben Ort sichtbar. Ein Hinweis nennt Ort und Stand und erlaubt einen erneuten Versuch. Fehlende Messwerte erscheinen als „–“ beziehungsweise „Keine Daten“; fehlende Abschnitte des Luftqualitätsverlaufs werden nicht mit einer Linie überbrückt.
+
+Das beste Zeitfenster wird auf Desktop und Mobil gemeinsam berechnet. Die Eignung ist das Mittel der stündlichen Bewertungen des konkreten Fensters, unabhängig vom Tagesmaximum. Verglichen werden gleich lange, zusammenhängende Fenster von bis zu drei Stunden zwischen 7 und 21 Uhr. Bei fehlenden Stundenwerten wird keine Eignung erfunden. Die Empfehlung nennt Regenrisiko, Wind und Temperatur als Begründung.

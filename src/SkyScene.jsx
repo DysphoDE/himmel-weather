@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { weatherKind } from './weather'
+import { weatherKind, weatherDate } from './weather'
 
 /**
  * Generierte Landschaft anstelle des festen KI-Bildes.
@@ -132,9 +132,9 @@ export default function SkyScene({
   const horizon = H * (wide ? .58 : .56)
 
   const scene = useMemo(() => {
-    const at = now ? new Date(now).getTime() : Date.now()
-    const rise = new Date(sunrise).getTime()
-    const set = new Date(sunset).getTime()
+    const at = now ? weatherDate(now).getTime() : Date.now()
+    const rise = weatherDate(sunrise).getTime()
+    const set = weatherDate(sunset).getTime()
     const phase = phaseOf(at, rise, set)
     const p = PHASES[phase]
     const kind = weatherKind(weatherCode)

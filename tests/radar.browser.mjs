@@ -1,6 +1,7 @@
-// Run with a Vite server on :5173. Set PLAYWRIGHT_MODULE if Playwright is provided externally.
+// The managed test runner supplies APP_URL. PLAYWRIGHT_MODULE can override the local runtime.
 import assert from 'node:assert/strict'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
+const base = (process.env.APP_URL || 'http://127.0.0.1:5173').replace(/\/$/, '')
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ viewport: { width: 1200, height: 850 } })
 const errors = []
@@ -39,7 +40,7 @@ const seek = async index => {
   }, index)
 }
 try {
-  await page.goto('http://127.0.0.1:5173/tests/radar-harness.html')
+  await page.goto(`${base}/tests/radar-harness.html`)
   await page.waitForFunction(() => document.querySelector('.radar-clock')?.textContent.includes('MESSUNG'), null, {timeout:20000})
   let initial = await state()
   assert.equal(initial.index,6)
@@ -81,10 +82,10 @@ try {
   await page.waitForFunction(() => document.querySelector('.radar-source').textContent.includes('AUSSERHALB'))
   assert.equal((await state()).layers.filter(layer=>layer.type==='dwd'&&layer.opacity>0).length,0)
   console.log('PASS: leaving DWD coverage releases pending frames')
-  await page.goto('http://127.0.0.1:5173/tests/radar-harness.html?mode=mini')
+  await page.goto(`${base}/tests/radar-harness.html?mode=mini`)
   await page.waitForFunction(() => document.querySelector('.mini-radar-badge')?.textContent==='DWD + GLOBAL')
   console.log('PASS: mini radar uses the same synchronized measurement pair')
-  await page.goto('http://127.0.0.1:5173/tests/radar-harness.html?mode=global')
+  await page.goto(`${base}/tests/radar-harness.html?mode=global`)
   await page.waitForFunction(() => document.querySelector('.radar-clock')?.textContent.includes('MESSUNG'))
   const global = await state()
   assert.equal(global.layers.filter(layer=>layer.opacity>0).length,1)

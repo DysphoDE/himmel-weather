@@ -1,8 +1,8 @@
 import { ChevronRight, Droplets, Wind } from 'lucide-react'
 import WeatherIcon from './WeatherIcon'
-import { dayCode, fmtDay, fmtPrecip, weatherLabel } from './weather'
+import { dayCode, fmtDay, fmtPrecip, formatWeatherDate, weatherLabel, measurement } from './weather'
 
-const round = n => Math.round(n ?? 0)
+const round = measurement
 
 /**
  * 10-Tage-Liste. Jede Zeile ist ein Schalter auf die Tagesansicht – der Chevron
@@ -31,7 +31,7 @@ export default function DayList({ model, dayIndex, onSelectDay }) {
             >
               <span className="day-when">
                 <b>{i === 0 ? 'Heute' : fmtDay(date)}</b>
-                <small>{new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</small>
+                <small>{formatWeatherDate(date, { day: '2-digit', month: '2-digit' })}</small>
               </span>
 
               <span className="day-what">
@@ -41,7 +41,7 @@ export default function DayList({ model, dayIndex, onSelectDay }) {
 
               <span className="day-wet">
                 <Droplets aria-hidden="true" />
-                {d.precipitation_probability_max[i] ?? 0} %
+                {round(d.precipitation_probability_max[i])} %
                 <small>{fmtPrecip(d.precipitation_sum[i])}</small>
               </span>
 

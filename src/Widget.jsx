@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Droplets, MapPin, Sunset, Wind } from 'lucide-react'
 import WeatherIcon from './WeatherIcon'
 import {
-  DEFAULT_PLACE, dayCode, fetchWidgetWeather, fmtDay, fmtTime, hourNumber,
-  searchPlaces, weatherLabel
+  DEFAULT_PLACE, currentHourIndex, localTime, dayCode, fetchWidgetWeather, fmtDay, fmtTime, hourNumber,
+  searchPlaces, weatherLabel, measurement
 } from './weather'
 
-const round = n => Math.round(n ?? 0)
+const round = measurement
 
 /* Ein Portal-Widget bleibt geöffnet, solange die Seite offen ist – ohne eigenen
    Takt zeigte es abends noch die Zahlen vom Morgen. */
@@ -41,7 +41,7 @@ function readParams() {
   }
 }
 
-async function resolvePlace({ latitude, longitude, name }) {
+async function resolvePlace({ latitude, longitude, name }, signal) {
   if (latitude != null && longitude != null) {
     // Ohne Namen steht die Position selbst da – lieber die Koordinate als ein
     // fremder Ortsname, der zufällig der Standard ist.
@@ -52,7 +52,7 @@ async function resolvePlace({ latitude, longitude, name }) {
     }
   }
   if (name) {
-    const [hit] = await searchPlaces(name)
+    const [hit] = await searchPlaces(name, { signal })
     if (!hit) throw new Error(`Ort „${name}“ nicht gefunden`)
     return hit
   }
@@ -101,6 +101,7 @@ export default function Widget() {
   const [place, setPlace] = useState(null)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const [now, setNow] = useState(Date.now)
   const root = useRef(null)
   /* Der aufgelöste Ort steht in einer Ref, nicht nur im State: Sonst suchte der
      Zehn-Minuten-Takt bei „?ort=…“ jedes Mal erneut in der Geocoding-API. */
@@ -108,8 +109,8 @@ export default function Widget() {
 
   const load = useCallback(async signal => {
     try {
-      const target = found.current || await resolvePlace(params)
-      const fresh = await fetchWidgetWeather(target.latitude, target.longitude, DAYS + 1)
+      const target = found.current || await resolvePlace(params, signal)
+      const fresh = await fetchWidgetWeather(target.latitude, target.longitude, DAYS + 1, { signal })
       if (signal.aborted) return
       found.current = target
       setPlace(target)
@@ -124,7 +125,10 @@ export default function Widget() {
     const control = new AbortController()
     load(control.signal)
     const timer = setInterval(() => load(control.signal), REFRESH_MS)
-    return () => { control.abort(); clearInterval(timer) }
+    const tick = () => setNow(Date.now())
+    const clock = setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => { control.abort(); clearInterval(timer); clearInterval(clock); document.removeEventListener('visibilitychange', tick) }
   }, [load])
 
   /* Die einbettende Seite kann die nötige Höhe nicht kennen – sie erfährt sie.
@@ -157,8 +161,7 @@ export default function Widget() {
   const model = useMemo(() => {
     if (!data) return null
     const h = data.hourly
-    const next = h.time.findIndex(t => new Date(t) > new Date())
-    const hour = next <= 0 ? 0 : next - 1
+    const hour = currentHourIndex(h.time, localTime(data.timezone, now))
     /* Regenrisiko der nächsten acht Stunden, nicht das Tagesmaximum aus daily:
        Dort stand am Abend „100 %“, während der Schauer längst vorbei war. */
     const rainNext = Math.max(
@@ -166,7 +169,7 @@ export default function Widget() {
       ...(h.precipitation_probability?.slice(hour, hour + 8) || []).map(value => Number(value) || 0)
     )
     return { c: data.current, h, d: data.daily, hour, rainNext, isDay: data.current.is_day !== 0 }
-  }, [data])
+  }, [data, now])
 
   return (
     <div className="widget-root" ref={root}>
@@ -214,7 +217,7 @@ export default function Widget() {
                     <span>{i === 0 ? 'Jetzt' : hourNumber(time)}</span>
                     <WeatherIcon code={model.h.weather_code[index]} size={19} isDay={model.h.is_day?.[index] !== 0} />
                     <b>{round(model.h.temperature_2m[index])}°</b>
-                    <small><Droplets aria-hidden="true" />{model.h.precipitation_probability?.[index] ?? 0} %</small>
+                    <small><Droplets aria-hidden="true" />{round(model.h.precipitation_probability?.[index])} %</small>
                   </div>
                 )
               })}

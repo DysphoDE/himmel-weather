@@ -540,3 +540,43 @@ svg { flex: none }
     transition-duration: .001ms !important;
   }
 }
+
+/* Der native Dialog hält Fokus und Tastatur im Suchfenster. */
+dialog.search-overlay {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  color: var(--ink);
+  overflow-y: auto;
+}
+.search-panel { max-height: 84dvh; overflow-y: auto }
+.search-results button[aria-selected="true"] { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px }
+.search-state { padding: 14px 12px; margin: 0; font-size: 12px }
+
+.weather-status {
+  position: fixed;
+  z-index: 100;
+  left: 16px;
+  right: 16px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1px solid #d9ba77;
+  border-radius: 14px;
+  background: #fff9e9;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+}
+.weather-status p { margin: 0; display: grid; gap: 4px }
+.weather-status button { padding: 10px; border: 1px solid currentColor; border-radius: 8px; font-weight: 600 }
+.weather-status button:disabled { opacity: .6; cursor: wait }
+.data-unavailable { color: var(--ink-3); font-size: 12px }
+@media (min-width: 1180px) {
+  .weather-status { left: 96px; bottom: 24px; right: 24px }
+}
